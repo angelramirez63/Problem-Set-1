@@ -36,17 +36,18 @@ mode_edu <- as.numeric(names(sort(table(db$maxEducLevel), decreasing = TRUE)[1])
 db <- db  %>%
   mutate(maxEducLevel = ifelse(is.na(maxEducLevel) == TRUE, mode_edu , maxEducLevel))
 
-  # Para clase, 1 si vive en zona urbana
-mode_clas <- as.numeric(names(sort(table(db$clase), decreasing = TRUE)[1]))
-
-db <- db  %>%
-  mutate(clase = ifelse(is.na(clase) == TRUE, mode_clas , clase))
+  # Para clase, 1 si vive en zona urbana. No hay missing values
+is.na(db$clase) %>% table()
 
   # Para formal, 1 si el trabajador tiene un empleo formal
+is.na(db$formal) %>% table()
 mode_for <- as.numeric(names(sort(table(db$formal), decreasing = TRUE)[1]))
 
 db <- db  %>%
   mutate(formal = ifelse(is.na(formal) == TRUE, mode_for , formal))
+
+#Para la variable age no se encontraron missing values
+is.na(db$age) %>% table()
 
 #### PUNTO 3 ###
 
