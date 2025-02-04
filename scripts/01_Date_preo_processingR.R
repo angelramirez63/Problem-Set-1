@@ -49,6 +49,45 @@ db <- readRDS("stores/datos_GEIH.rds") %>%
 --------------------------------------------
 "
 
+"
+1.0) Visualización previa de algunas variables:
+----------------------------------------------
+"
+
+db_sub1<- db %>% select( directorio, secuencia_p, orden, estrato1, sex, age, oficio, orden, totalHoursWorked,
+                    dsi, ie , formal, informal, sizeFirm , regSalud, maxEducLevel, ingtot,
+                    ingtotes,ingtotob, y_salary_m, y_total_m, y_ingLab_m_ha )
+
+#i) Visualizar las variables por tipo de dato:
+vis_dat(db_sub1)
+
+#ii) Visualizar las valores que son NA: 
+vis_miss(db_sub1)
+
+#Conclusión las variables que toca imputar más son ie-ingresp en especio; regSalud - regimen de salud categoríca; 
+#ingtotes - ingreso total imputado(valor de la compensaciones que recibe un empleado de su empleador); y_salary_m - salario mensual; 
+# y_total_m - ingresos totales mensuales; y_ingLab_m_ha - ingresos salariales por hora 
+
+#iii) Correlación entre las variables: 
+db_corr <-  db_sub1 %>%  select(which(apply(db_sub1, 2, sd) > 0))
+M <- cor(db_corr)
+corrplot(M) 
+#Los trabajadores formales tienden a trabajar en firmas más grandes 
+
+"
+1.1) Imputación de la variable salario por hora: 
+------------------------------------------------
+"
+
+
+
+ski(db$y_ingLab_m_ha)
+
+"
+1.2) Missing values: 
+-------------------
+"
+
 ###Conservar indiviudos mayores de 18 años que tienen un empleo: 
 
 #i) la condicción para conservar la observación es:  age == edad_personas , ocu === dummy_si_la_persona esta ocupada
@@ -75,6 +114,9 @@ db_miss <- db_miss %>%
   filter(n_missing > 0)  
 head(db_miss,20)
 
+##Limpieza de variables - Parte 1:
+##-------------------------------
+
 #De las 12 variables que solo son NA: 
 #P550: Es para centros poblados y Bogotá no es un centro poblado (rm)
 #y_gananciaNetaAgro_m: (?) 
@@ -95,6 +137,33 @@ head(db_miss,20)
 db_miss <- db_miss %>% filter(complete_rate >0)
 db <- db %>%
       select(-c(p550,p7310,p7422, p7422s1, p7472,p7472s1, ina, imdi,  cclasnr5,imdies, iof3ies))
+
+
+##Limpieza de variables - Parte 2:
+##-------------------------------
+
+
+#clase: identificador urbano rural, comon la encuesta se hizo en bogotá todo es urbano (rm)
+#ocu: por construcción sabemos que todas las personas están ocupadas
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
