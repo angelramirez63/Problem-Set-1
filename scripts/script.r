@@ -27,7 +27,7 @@ db <- readRDS("stores/datos_GEIH.rds") %>%
 db<- db %>% 
   filter(age > 18 & dsi==0)
 
-#Crear variable categórica para género
+#Editar variable categórica para género
 db<- db %>% 
   mutate(gender=ifelse(sex==1,0,1))
 
