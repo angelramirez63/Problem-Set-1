@@ -1,7 +1,3 @@
-##########################################################
-# Taller 1
-##########################################################
-
 #### PUNTO 1 ###
 
 #### PUNTO 2 ###
@@ -32,6 +28,7 @@ db<- db %>%
   mutate(gender=ifelse(sex==1,0,1))
 
   #Imputar valores faltantes de variables categóricas de interés
+  # Por el momento tenemos edad, máximo nivel educativo, formalidad del empleo y zona urbana o rural
   # Calculando la moda. Para maxEducLevel
 mode_edu <- as.numeric(names(sort(table(db$maxEducLevel), decreasing = TRUE)[1]))
 
