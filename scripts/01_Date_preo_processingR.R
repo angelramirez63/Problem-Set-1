@@ -43,20 +43,29 @@ rm(wd)
 db <- readRDS("stores/datos_GEIH.rds") %>% 
       as_tibble()
 
+
+###Conservar indiviudos mayores de 18 años que tienen un empleo: 
+
+#iv) la condicción para conservar la observación es:  age == edad_personas , ocu === dummy_si_la_persona esta ocupada
+
+db <- db %>% 
+  filter(age >= 18 & ocu == 1) 
+
 "
 --------------------------------------------
 1) Limpieza y pre procesamiento de los datos:
 --------------------------------------------
 "
 
+
 "
-1.0) Visualización previa de algunas variables:
-----------------------------------------------
+1.1) Visualización previa de algunas variables - missing values:
+---------------------------------------------------------------
 "
 
 db_sub1<- db %>% select( directorio, secuencia_p, orden, estrato1, sex, age, oficio, orden, totalHoursWorked,
-                    dsi, ie , formal, informal, sizeFirm , regSalud, maxEducLevel, ingtot,
-                    ingtotes,ingtotob, y_salary_m, y_total_m, y_ingLab_m_ha )
+                         dsi, ie , formal, informal, sizeFirm , regSalud, maxEducLevel, ingtot,
+                         ingtotes,ingtotob, y_salary_m, y_salary_m_hu)
 
 #i) Visualizar las variables por tipo de dato:
 vis_dat(db_sub1)
@@ -64,7 +73,7 @@ vis_dat(db_sub1)
 #ii) Visualizar las valores que son NA: 
 vis_miss(db_sub1)
 
-#Conclusión las variables que toca imputar más son ie-ingresp en especio; regSalud - regimen de salud categoríca; 
+#Conclusión las variables que toca imputar más son en especifico: regSalud - regimen de salud categoríca; 
 #ingtotes - ingreso total imputado(valor de la compensaciones que recibe un empleado de su empleador); y_salary_m - salario mensual; 
 # y_total_m - ingresos totales mensuales; y_ingLab_m_ha - ingresos salariales por hora 
 
@@ -74,26 +83,67 @@ M <- cor(db_corr)
 corrplot(M) 
 #Los trabajadores formales tienden a trabajar en firmas más grandes 
 
+
+
 "
-1.1) Imputación de la variable salario por hora: 
+1.2) Imputación de la variable salario por hora: 
 ------------------------------------------------
 "
 
+#i)Variables categorícas que se van usar para obtener los grupos: 
+
+db <-  db %>%  mutate(across(c(cclasnr11, cclasnr2, cclasnr3, cclasnr4,cclasnr6, cclasnr7, 
+                        cclasnr8, college, cotPension, cuentaPropia, formal, informal, 
+                        microEmpresa, sex, estrato1, maxEducLevel, oficio, p6050, p6090, 
+                        p6100, p6210, p6210s1, p6240, p6510, p6510s2, p6545, p6545s2, 
+                        p6580, p6580s2, p6585s1, p6585s1a2, p6585s2, p6585s2a2, p6585s3, 
+                        p6585s3a2, p6585s4, p6585s4a2, p6590, p6600, p6610, p6620, 
+                        p6630s1, p6630s2, p6630s3,p6630s4, p6630s6, p6920, p7040, 
+                        p7050, p7505, regSalud, relab, sizeFirm), as.factor))
+
+#ii) Gráfica distribuión de las variables en la lista llamada "variables": 
+
+variables <- c("ingtot", "ingtotes", "ingtotob", "y_salary_m", "y_salary_m_hu")
+
+for (variable in variables) {
+  
+  plot <- ggplot(db, aes_string(variable)) +
+          geom_histogram(color = "#000000", fill = "#0099F8") +
+          geom_vline(xintercept = median(db[[variable]], na.rm = TRUE), linetype = "dashed", color = "red") +
+          geom_vline(xintercept = mean(db[[variable]], na.rm = TRUE), linetype = "dashed", color = "blue") +  
+          ggtitle(paste("Distribución", as.character(variable), sep = " ")) +
+          theme_classic() +
+          theme(plot.title = element_text(size = 18))
+  
+  print(plot)
+  
+}
+
+#Las distribuciones de las variables tienen  una cola derecha my larga por lo cual es mas apropiado usar la mediana para cada uno de los grupos
+
+#iii) imputar los valores faltantes para la mediana por grupos de las variables de ingreso: 
 
 
-ski(db$y_ingLab_m_ha)
+for (variable in variables) {
+  
+     db <- db %>% 
+          group_by(estrato1) %>% 
+          mutate( variable = ifelse(is.na(variable) == T, median(variable, na.rm = T), variable)) %>% 
+          ungroup()
+}
+
+
+db <- db %>% 
+        group_by(estrato1) %>% 
+        mutate(y_salary_m_hu = ifelse(is.na(y_salary_m_hu) == T, median(y_salary_m_hu, na.rm = T), y_salary_m_hu)) %>% 
+        ungroup()
+
+
 
 "
 1.2) Missing values: 
 -------------------
 "
-
-###Conservar indiviudos mayores de 18 años que tienen un empleo: 
-
-#i) la condicción para conservar la observación es:  age == edad_personas , ocu === dummy_si_la_persona esta ocupada
-
-db <- db %>% 
-        filter(age >= 18 & ocu == 1) 
 
 
 ###Visualización missing values: 
@@ -134,7 +184,7 @@ head(db_miss,20)
 
 #Remover 11 de las 12 variables: 
 
-db_miss <- db_miss %>% filter(complete_rate >0)
+db_miss <- db_miss %>% filter(complete_rate > 0)
 db <- db %>%
       select(-c(p550,p7310,p7422, p7422s1, p7472,p7472s1, ina, imdi,  cclasnr5,imdies, iof3ies))
 
@@ -144,7 +194,14 @@ db <- db %>%
 
 
 #clase: identificador urbano rural, comon la encuesta se hizo en bogotá todo es urbano (rm)
-#ocu: por construcción sabemos que todas las personas están ocupadas
+#ocu: por construcción sabemos que todas las personas están ocupadas (rm)
+#ina: como solo dejamos ocupados non hay inactivos por construcción (rm)
+#depto: todos están en Bogotá (rm)
+#informal: es redundante con la variable formal (rm)
+#dominio: todos están en Bogotá (rm)
+#dsi: indicador de empleado (rm) 
+
+
 
 
 
