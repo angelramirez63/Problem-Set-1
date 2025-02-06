@@ -8,7 +8,7 @@ cat("\014")
 
   #Cargar paquetes
 require(pacman)
-p_load(rio, tidyverse, skimr, here, gridExtra, corrplot, stargazer, MASS, rvest)
+p_load(rio, tidyverse, dplyr skimr, here, gridExtra, corrplot, stargazer, MASS, rvest)
 
   #Directorio
 wd<-here()
@@ -58,9 +58,23 @@ db <- db  %>%
 is.na(db$ingtot) %>% table()
 
 #Para el ingreso por horas extra
-db<- rename(ingextra=p6510s1)
+db <- db %>%  rename(ingextra = p6510s1)
+is.na(db$ingextra) %>% table()
+db <- db  %>%
+  mutate(ingextra = ifelse(is.na(ingextra) == TRUE, median(db$ingextra, na.rm = TRUE) , ingextra))
 
-#Ahora se limpiarán outliers haciendo uso de la desviación estándar
+#Ahora se limpiarán outliers haciendo uso del cuartil 0,975 y 0,025
+
+#Para ingreso total
+low <- quantile(db$ingtot, 0.025, na.rm = TRUE)  # Percentil 2.5
+up <- quantile(db$ingtot, 0.975, na.rm = TRUE)   # Percentil 97.5
+
+# Truncar los valores de ingtot
+db <- db %>%
+  mutate(ingtot = ifelse(ingtot <= low, low, 
+                             ifelse(ingtot >= up, up, ingtot)))
+
+
 
 
 
