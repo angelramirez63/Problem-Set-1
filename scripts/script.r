@@ -28,7 +28,7 @@ db<- db %>%
   mutate(gender=ifelse(sex==1,0,1))
 
   #Imputar valores faltantes de variables categóricas de interés
-  # Por el momento tenemos edad, máximo nivel educativo, formalidad del empleo, zona urbana o rural, y total de horas trabajadas la semana previa
+  # Por el momento tenemos edad, máximo nivel educativo, formalidad del empleo, ingreso por horas extra, ingreso total, zona urbana o rural, y total de horas trabajadas la semana previa
   # Calculando la moda. Para maxEducLevel
 mode_edu <- as.numeric(names(sort(table(db$maxEducLevel), decreasing = TRUE)[1]))
 
@@ -53,6 +53,12 @@ is.na(db$age) %>% table()
 is.na(db$totalHoursWorked) %>% table()
 db <- db  %>%
   mutate(totalHoursWorked = ifelse(is.na(totalHoursWorked) == TRUE, median(db$totalHoursWorked, na.rm = TRUE) , totalHoursWorked))
+
+#Para el ingreso total, no hay missing values
+is.na(db$ingtot) %>% table()
+
+#Para el ingreso por horas extra
+db<- rename(ingextra=p6510s1)
 
 #Ahora se limpiarán outliers haciendo uso de la desviación estándar
 
