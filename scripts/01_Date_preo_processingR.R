@@ -41,7 +41,7 @@ rm(wd)
 
 #iii) Cargar los datos: 
 db <- readRDS("stores/datos_GEIH.rds") %>% 
-      as_tibble()
+  as_tibble()
 
 
 ###Conservar indiviudos mayores de 18 años que tienen un empleo: 
@@ -51,155 +51,93 @@ db <- readRDS("stores/datos_GEIH.rds") %>%
 db <- db %>% 
   filter(age >= 18 & ocu == 1) 
 
+
 "
---------------------------------------------
-1) Limpieza y pre procesamiento de los datos:
---------------------------------------------
+1) Limpieza general - remover variables con más del 59% de NA o con el mismo valor:
+-----------------------------------------------------------------------------------
+
+El objetivo de esta primera parte es limpiar la mayor cantidad de variables posible que comportan 
+atributos comunes. Por ejemplo, las que solo tienen missing values o tienen el mismo valor para todas las observaciones
 "
 
 
+#i) Variables que solo tienen missing values o que tienen el mismo valor para todas las observaciones: 
+#Se removieron 21 variables que cumplen está condición
+db_clean_process <- db %>% select_if(~ !all(is.na(.)) & length(unique(.))>1)
+
+#ii) Visualización missing después de la primera limpieza e identificación de las variables que tienen
+#90% de missing values: 
+#Hay 40 variables que cumplen esta condición que se van a ser removidas: 
+db_miss <- skim(db_clean_process) %>% 
+  select( skim_variable, n_missing, complete_rate) %>% 
+  arrange(-n_missing) %>% 
+  mutate(Not_complete_10 = ifelse(complete_rate < 0.1, 1, 0)) 
+
+db_clean_process <- db_clean_process %>% select(-iof3ies, -y_accidentes_m, -p6585s4a2, -y_subEducativo_m, -cclasnr3, 
+                                                -isaes, -cclasnr7, -iof2es, -cclasnr11, -iof6es, -p6545s2, -y_primas_m, 
+                                                -y_vivienda_m, -iof3hes, -cclasnr8, -y_otros_m, -cclasnr6, -iof1es, -cclasnr4, 
+                                                -iees, -p6580s2, -y_bonificaciones_m, -y_viaticos_m, -p6585s1a2, -y_auxilioAliment_m, 
+                                                -y_salarySec_m, -hoursWorkActualSecondJob, -y_primaVacaciones_m, -y_primaNavidad_m, 
+                                                -p7050, -p6510s2, -y_horasExtras_m, -y_especie_m, -cclasnr2, -impaes, -p7500s1, -p7500s2, 
+                                                -p7500s3, -p7110, -p7120)
+skim(db_clean_process)
+
+#iii) Visualización missing depués de la 2 limpieza e identificación variables con al menos 41% missing values: 
+#hay 21 variables que cumplen está condición que van a ser removidas 
+#la razón por que no use el 60% es porque hay 4 variables salariales que están completas el 59%, que son: y_salary_m, y_salary_m_hu, 
+#y_ingLab_m, y_ingLab_m_ha 
+db_miss  <- db_miss %>% 
+  filter(Not_complete_10 == 0) %>% 
+  arrange(-n_missing) %>% 
+  mutate(Not_complete_59 = ifelse(complete_rate < 0.59, 1, 0)) %>%
+  select(-Not_complete_10)
+
+db_clean_process <- db_clean_process %>% select(-c(ingtotes, p6585s3a2, y_subFamiliar_m, p7140s1, p7140s2, p7150, p7160, 
+                                                   p6750, y_gananciaNeta_m, y_gananciaIndep_m, y_gananciaIndep_m_hu, p6585s2a2, 
+                                                   y_auxilioTransp_m, p6760, p7510s1, p7510s2, p7510s3, p7510s5, p7510s6, p7510s7, 
+                                                   y_primaServicios_m))
+
+
 "
-1.1) Visualización previa de algunas variables - missing values:
+2) Imputación de valores para las variables de ingreso salarial: 
 ---------------------------------------------------------------
 "
 
-db_sub1<- db %>% select( directorio, secuencia_p, orden, estrato1, sex, age, oficio, orden, totalHoursWorked,
-                         dsi, ie , formal, informal, sizeFirm , regSalud, maxEducLevel, ingtot,
-                         ingtotes,ingtotob, y_salary_m, y_salary_m_hu)
 
-#i) Visualizar las variables por tipo de dato:
-vis_dat(db_sub1)
+#i) Visualización: de las distribuciones de las variables en el vecto "variables" para decidir si imputar por la+
+#---------------- media o la mediana. 
+#Nota: Se agrupa por estrato porque si en promedio una vivienda es la mayor fuente de riqueza y de deuda simultaneamente 
+# el estrato de la vivienda que aspectos de la ubicación y la construcción de la vivienda tambien refleja el patrimonio de las personas. 
+#Fuente: https://www.imf.org/en/Blogs/Articles/2024/12/04/housings-unique-role-in-lives-and-economies-demands-greater-understanding
 
-#ii) Visualizar las valores que son NA: 
-vis_miss(db_sub1)
+variables <- c("y_salary_m", "y_salary_m_hu", "y_ingLab_m", "y_ingLab_m_ha", "y_total_m", "y_total_m_ha") 
 
-#Conclusión las variables que toca imputar más son en especifico: regSalud - regimen de salud categoríca; 
-#ingtotes - ingreso total imputado(valor de la compensaciones que recibe un empleado de su empleador); y_salary_m - salario mensual; 
-# y_total_m - ingresos totales mensuales; y_ingLab_m_ha - ingresos salariales por hora 
-
-#iii) Correlación entre las variables: 
-db_corr <-  db_sub1 %>%  select(which(apply(db_sub1, 2, sd) > 0))
-M <- cor(db_corr)
-corrplot(M) 
-#Los trabajadores formales tienden a trabajar en firmas más grandes 
-
-
-
-"
-1.2) Imputación de la variable salario por hora: 
-------------------------------------------------
-"
-
-#i)Variables categorícas que se van usar para obtener los grupos: 
-
-db <-  db %>%  mutate(across(c(cclasnr11, cclasnr2, cclasnr3, cclasnr4,cclasnr6, cclasnr7, 
-                        cclasnr8, college, cotPension, cuentaPropia, formal, informal, 
-                        microEmpresa, sex, estrato1, maxEducLevel, oficio, p6050, p6090, 
-                        p6100, p6210, p6210s1, p6240, p6510, p6510s2, p6545, p6545s2, 
-                        p6580, p6580s2, p6585s1, p6585s1a2, p6585s2, p6585s2a2, p6585s3, 
-                        p6585s3a2, p6585s4, p6585s4a2, p6590, p6600, p6610, p6620, 
-                        p6630s1, p6630s2, p6630s3,p6630s4, p6630s6, p6920, p7040, 
-                        p7050, p7505, regSalud, relab, sizeFirm), as.factor))
-
-#ii) Gráfica distribuión de las variables en la lista llamada "variables": 
-
-variables <- c("ingtot", "ingtotes", "ingtotob", "y_salary_m", "y_salary_m_hu")
 
 for (variable in variables) {
   
   plot <- ggplot(db, aes_string(variable)) +
-          geom_histogram(color = "#000000", fill = "#0099F8") +
-          geom_vline(xintercept = median(db[[variable]], na.rm = TRUE), linetype = "dashed", color = "red") +
-          geom_vline(xintercept = mean(db[[variable]], na.rm = TRUE), linetype = "dashed", color = "blue") +  
-          ggtitle(paste("Distribución", as.character(variable), sep = " ")) +
-          theme_classic() +
-          theme(plot.title = element_text(size = 18))
+    geom_histogram(color = "#000000", fill = "#0099F8") +
+    geom_vline(xintercept = median(db[[variable]], na.rm = TRUE), linetype = "dashed", color = "red") +
+    geom_vline(xintercept = mean(db[[variable]], na.rm = TRUE), linetype = "dashed", color = "blue") +  
+    ggtitle(paste("Distribución", as.character(variable), sep = " ")) +
+    theme_classic() +
+    theme(plot.title = element_text(size = 18))
   
   print(plot)
   
 }
 
-#Las distribuciones de las variables tienen  una cola derecha my larga por lo cual es mas apropiado usar la mediana para cada uno de los grupos
-
-#iii) imputar los valores faltantes para la mediana por grupos de las variables de ingreso: 
+#Las distrubiciones tienen colas izquierdas pesadas y colas derechas largas. Por lo tanto, se decide imputar usando la media. 
 
 
-for (variable in variables) {
-  
-     db <- db %>% 
-          group_by(estrato1) %>% 
-          mutate( variable = ifelse(is.na(variable) == T, median(variable, na.rm = T), variable)) %>% 
-          ungroup()
-}
+#ii)Imputar las variables ingreso salarial: 
 
+variables <- c("y_salary_m", "y_salary_m_hu", "y_ingLab_m", "y_ingLab_m_ha", "y_total_m", "y_total_m_ha") 
 
 db <- db %>% 
-        group_by(estrato1) %>% 
-        mutate(y_salary_m_hu = ifelse(is.na(y_salary_m_hu) == T, median(y_salary_m_hu, na.rm = T), y_salary_m_hu)) %>% 
-        ungroup()
-
-
-
-"
-1.2) Missing values: 
--------------------
-"
-
-
-###Visualización missing values: 
-
-#ii) Organizar la base de datos en orden descendente dependiendo del número de NA 
-
-db_miss <- skim(db) %>% 
-  select( skim_variable, n_missing, complete_rate) %>% 
-  arrange(-n_missing)
-
-#iii) Conservamos las variables que tienen missing values para su analísis: 
-
-#Notas: 
-#119 variables tienen al menos un NA 
-#12 de las 119 variables tienen NA para todas las observaciones
-
-db_miss <- db_miss %>%
-  filter(n_missing > 0)  
-head(db_miss,20)
-
-##Limpieza de variables - Parte 1:
-##-------------------------------
-
-#De las 12 variables que solo son NA: 
-#P550: Es para centros poblados y Bogotá no es un centro poblado (rm)
-#y_gananciaNetaAgro_m: (?) 
-#P7310: Categoríca de dummy de si la persona habia trabajado antes (rm) - se puede aproximar usando la edad si se necesita
-#P7350: es una pregunta para desocupados (rm)
-#P7422: es una pregunta para desocupados (rm)
-#P7422s1: es una pregunta complementaria a P7422 (rm)
-#P7472: pregunta para desocupados (rm)
-#P7472s1: pregunta complementaria a P7472 (rm)
-#ina: pregunta si la persona esta inactiva y solo nos interesan los empleados (rm)
-#imdi: pregunta para desocupados (rm)
-#cclasnr5: pregunta para desocupados (rm)
-#imdies: pregunta para desocupados (rm)
-#iof3ies: para valores extremos o NA
-
-#Remover 11 de las 12 variables: 
-
-db_miss <- db_miss %>% filter(complete_rate > 0)
-db <- db %>%
-      select(-c(p550,p7310,p7422, p7422s1, p7472,p7472s1, ina, imdi,  cclasnr5,imdies, iof3ies))
-
-
-##Limpieza de variables - Parte 2:
-##-------------------------------
-
-
-#clase: identificador urbano rural, comon la encuesta se hizo en bogotá todo es urbano (rm)
-#ocu: por construcción sabemos que todas las personas están ocupadas (rm)
-#ina: como solo dejamos ocupados non hay inactivos por construcción (rm)
-#depto: todos están en Bogotá (rm)
-#informal: es redundante con la variable formal (rm)
-#dominio: todos están en Bogotá (rm)
-#dsi: indicador de empleado (rm) 
+  group_by(estrato1) %>% 
+  mutate(across(all_of(variables), ~ ifelse(is.na(.), median(., na.rm = TRUE), .))) %>% 
+  ungroup()
 
 
 
