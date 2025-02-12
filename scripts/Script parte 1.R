@@ -9,7 +9,7 @@ if(!require(pacman)) install.packages("pacman") ; require(pacman)
 library(pacman)
 
 p_load(tidyverse, rvest, rebus, htmltools, rio, skimr,
-       visdat, margins, stargazer, here)
+       visdat, margins, stargazer, here, VIM, caret)
 
 
 # Crear el directorio 
@@ -53,7 +53,8 @@ db_limpia <- db %>%
 
 #Eliminar variables de solo missings o que no tienen variación
 
-db_limpia <- db_limpia %>% select_if(~ !all(is.na(.)) & length(unique(.))>1)
+db_limpia <- db_limpia %>% select_if(~ !all(is.na(.)) & length(unique(.))>1) %>%
+  select(!directorio, !secuencia_p, !orden)
 
 #Convertir variables categoricas en factores
 
@@ -81,19 +82,63 @@ db_limpia <- db_limpia %>% rename(parentesco_jefe = p6050, segur_social = p6090,
 # Eliminamos las variables para las cuales más del 60% de las observaciones son faltantes
 missing_percent <- colMeans(is.na(db_limpia)) * 100
 db_limpia <- db_limpia[, missing_percent <= 60]
+library(dplyr)
+library(caret)
 
-#Para las variables categoricas imputamos los missings con la categoría más común
-# we can use skim as a dataset. 
 
-db_miss <- skim(datos_GEIH) %>% select( skim_variable, n_missing)
+# Eliminamos variables altamente correlacionadas
+db_numerica <- db_limpia %>%
+  select(where(is.numeric)) %>%
+  select(!starts_with("y_"))
+
+# Calcular la matriz de correlación, ignorando NAs
+cor_matrix <- cor(db_numerica, use = "pairwise.complete.obs")
+
+  # Revisar si hay valores NA en la matriz de correlación
+if (any(is.na(cor_matrix))) {
+  print("¡Atención! Hay valores NA en la matriz de correlación.")
+} else {
+  # Identificar pares de variables con correlación ≥ 0.9
+  highly_correlated <- which(abs(cor_matrix) >= 0.9999, arr.ind = TRUE)
+  highly_correlated <- highly_correlated[highly_correlated[,1] != highly_correlated[,2], ]
+  
+  # Obtener nombres de variables correlacionadas
+  correlated_vars <- unique(rownames(highly_correlated))
+  
+  # Mantener solo la primera variable de cada grupo
+  vars_to_keep <- unique(highly_correlated[,1])  # Índices de variables a conservar
+  vars_to_remove <- setdiff(correlated_vars, colnames(db_numerica)[vars_to_keep])  # Variables a eliminar
+  
+  # Filtrar la base de datos
+  db_numerica_clean <- db_numerica[, !names(db_numerica) %in% vars_to_remove]
+  
+  # Reunir con variables no numéricas
+  db_limpia <- bind_cols(db_numerica_clean, db_limpia %>% select(where(negate(is.numeric))))
+  
+  #Imprimimos la lista de variables que eliminamos
+  print(paste("Variables eliminadas:", paste(vars_to_remove, collapse = ", ")))
+  
+  #Eliminamos los elementos que no vamos a necesitar después
+  rm(db_numerica, db_numerica_clean, highly_correlated, correlated_vars, missing_percent,
+     vars_to_keep, vars_to_remove)
+
+}
+
+
+#Imputamos missings
+db_limpia <- kNN(db_limpia, k=3)
+"kNN se demora mucho, entonces vale la pena hacer otras aproximaciones a la imputación
+de variables primero y luego llenar las que faltan usando kNN"
+missing_percent2 <- colMeans(is.na(db_limpia)) * 100
 
 #Creamos la variable de resultado: el logarítmo natural del salario
-datos_GEIH$ln_sal <- log(datos_GEIH$y_ingLab_m_ha) 
+db_limpia$ln_sal <- log(db_limpia$y_ingLab_m_ha) 
+
 
 
 #3. Modelo de regresión lineal -------------------------------------------------
-datos_GEIH$age_2 <- datos_GEIH$age^2
-modelo1 <- lm(ln_sal ~ age + I(age^2), data = datos_GEIH)
+db_limpia$age_2 <- db_limpia$age^2
+modelo1 <- lm(ln_sal ~ age + I(age^2), data = db_limpia)
 mar <- summary(margins(modelo1))
 
 stargazer(modelo1, type = "latex", title = "Resultados Modelo 1", out = "Views/mod1.txt", digits = 5)
