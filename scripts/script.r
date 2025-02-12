@@ -27,6 +27,14 @@ db<- db %>%
 db<- db %>% 
   mutate(gender=ifelse(sex==1,0,1))
 
+  #Observar la cantidad de missing values de cada variable
+  missing_values<-colSums(is.na(db))
+missing_tab<-data.frame(
+  Miss_val=missing_values
+  )
+missing_tab
+
+
   #Imputar valores faltantes de variables categóricas de interés
   # Por el momento tenemos edad, máximo nivel educativo, formalidad del empleo, ingreso por horas extra, ingreso total, zona urbana o rural, y total de horas trabajadas la semana previa
   # Calculando la moda. Para maxEducLevel
