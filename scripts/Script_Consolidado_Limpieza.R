@@ -106,6 +106,28 @@ db_limpia <- db_limpia %>%
   ) %>%
   ungroup()
 
+# Lista de variables a procesar. Se omitieron variables que estaban muy 
+#concentrados en cero y hacian que el límite superior tuviera este mismo valor
+vars <- c(
+  "p6500", "p6585s2a1", "p6585s3a1", "p6590s1", "p6630s1a1", "p6630s2a1", 
+  "p6630s3a1", "p6630s4a1", "p7070", "impa", "isa", "ie", "y_salary_m", "y_salary_m_hu", "y_ingLab_m",
+  "y_primaServicios_m", "y_ingLab_m_ha", "y_total_m", "y_total_m_ha"
+)
+
+# Aplicar el proceso a cada variable en el loop
+for (var in vars) {
+  # Calcular el percentil 97.5% de la variable
+  up <- quantile(db_limpia[[var]], 0.975, na.rm = TRUE)
+  
+  # Reemplazar valores mayores o iguales al percentil 97.5%
+  db_limpia <- db_limpia %>%
+    mutate(!!sym(var) := ifelse(test = (.data[[var]] >= up), 
+                                yes = up, 
+                                no = .data[[var]]))
+}
+
+
+
 #Convertir variables categoricas en factores
 
 db_limpia <- db_limpia %>%
