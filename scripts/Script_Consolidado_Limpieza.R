@@ -51,59 +51,19 @@ db <- readRDS("stores/datos_GEIH.rds") %>%
 db_limpia <- db %>% 
   filter(wap == 1 & ocu == 1) 
 
+"El método que usamos da lo mismo que el que usaron en la complementaria:
+db_limpia2 <- db %>% filter(totalHoursWorked>0)"
+
 #Eliminar variables de solo missings o que no tienen variación
 
 db_limpia <- db_limpia %>% select_if(~ !all(is.na(.)) & length(unique(.))>1) %>%
   select(!directorio, !secuencia_p, !orden)
 
-
-
 # Eliminamos las variables para las cuales más del 60% de las observaciones son faltantes
 missing_percent <- colMeans(is.na(db_limpia)) * 100
 db_limpia <- db_limpia[, missing_percent <= 60]
 
-
-# Eliminamos variables altamente correlacionadas
-db_numerica <- db_limpia %>%
-  select(where(is.numeric)) %>%
-  select(!starts_with("y_"))
-
-# Calcular la matriz de correlación, ignorando NAs
-cor_matrix <- cor(db_numerica, use = "pairwise.complete.obs")
-
-# Revisar si hay valores NA en la matriz de correlación
-if (any(is.na(cor_matrix))) {
-  print("¡Atención! Hay valores NA en la matriz de correlación.")
-} else {
-  # Identificar pares de variables con correlación ≥ 0.9
-  highly_correlated <- which(abs(cor_matrix) >= 0.9999, arr.ind = TRUE)
-  highly_correlated <- highly_correlated[highly_correlated[,1] != highly_correlated[,2], ]
-  
-  # Obtener nombres de variables correlacionadas
-  correlated_vars <- unique(rownames(highly_correlated))
-  
-  # Mantener solo la primera variable de cada grupo
-  vars_to_keep <- unique(highly_correlated[,1])  # Índices de variables a conservar
-  vars_to_remove <- setdiff(correlated_vars, colnames(db_numerica)[vars_to_keep])  # Variables a eliminar
-  
-  # Filtrar la base de datos
-  db_numerica_clean <- db_numerica[, !names(db_numerica) %in% vars_to_remove]
-  
-  # Reunir con variables no numéricas
-  db_limpia <- bind_cols(db_numerica_clean, db_limpia %>% select(where(negate(is.numeric))))
-  
-  #Imprimimos la lista de variables que eliminamos
-  print(paste("Variables eliminadas:", paste(vars_to_remove, collapse = ", ")))
-  
-  #Eliminamos los elementos que no vamos a necesitar después
-  rm(db_numerica, db_numerica_clean, highly_correlated, correlated_vars, missing_percent,
-     vars_to_keep, vars_to_remove)
-  
-}
-
-
 #Imputar variables categoricas con la categoría más común:
-
 
 #Función para calcular la moda (el valor más frecuente)
 calcular_moda <- function(x) {
@@ -146,29 +106,23 @@ db_limpia <- db_limpia %>%
   ) %>%
   ungroup()
 
+#Convertir variables categoricas en factores
+
+db_limpia <- db_limpia %>%
+  mutate(across(c(college, cotPension, cuentaPropia, formal, informal, microEmpresa, 
+                  sex, estrato1, maxEducLevel, oficio, p6050, p6090, p6100, p6210, 
+                  p6210s1, p6240, p6545, p6580, p6585s1, p6585s2, p6585s3, p6585s4, 
+                  p6590, p6600, p6610, p6620, p6630s1, p6630s2, p6630s3,p6630s4, 
+                  p6630s6, p6920, p7040, p7505, regSalud, relab, sizeFirm), as.factor))
+
 #Renombramos variables para facilitar el manejo de datos
 db_limpia <- db_limpia %>% rename(parentesco_jefe = p6050, segur_social = p6090, 
                                   regim_segur_social =p6100, nivel_educ = p6210, 
                                   grad_aprob = p6210s1, actividad_prin = p6240, 
                                   tiempo_trabaj = p6426, cotiza_pens = p6920, 
                                   ingreso_laboral = p6500, horas_ocup_prin = p7040, 
-                                  subempleado = p7050, tipo_contrato = p7090, 
-                                  afiliado_pension = p7110, afiliado_salud = p7120, 
-                                  recibe_ing_hor_ext = p6510, ingreso_hor_ext = p6510s1)
-
-
-#Convertir variables categoricas en factores
-
-db_limpia <- db_limpia %>%
-  mutate(across(c(cclasnr11, cclasnr2, cclasnr3, cclasnr4,cclasnr6, cclasnr7, 
-                  cclasnr8, college, cotPension, cuentaPropia, formal, informal, 
-                  microEmpresa, sex, estrato1, maxEducLevel, oficio, p6050, p6090, 
-                  p6100, p6210, p6210s1, p6240, p6510, p6510s2, p6545, p6545s2, 
-                  p6580, p6580s2, p6585s1, p6585s1a2, p6585s2, p6585s2a2, p6585s3, 
-                  p6585s3a2, p6585s4, p6585s4a2, p6590, p6600, p6610, p6620, 
-                  p6630s1, p6630s2, p6630s3,p6630s4, p6630s6, p6920, p7040, 
-                  p7050, p7505, regSalud, relab, sizeFirm), as.factor))
-
+                                  tipo_contrato = p7090, recibe_ing_hor_ext = p6510,
+                                  ingreso_hor_ext = p6510s1)
 
 
 #Imputamos missings
