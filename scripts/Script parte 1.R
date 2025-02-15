@@ -49,7 +49,7 @@ db <- readRDS("stores/datos_GEIH.rds") %>%
 #i) la condicción para conservar la observación es:  age == edad_personas , ocu === dummy_si_la_persona esta ocupada
 
 db_limpia <- db %>% 
-  filter(wap == 1 & ocu == 1) 
+  filter(wap == 1 & dsi == 1) 
 
 #Eliminar variables de solo missings o que no tienen variación
 
