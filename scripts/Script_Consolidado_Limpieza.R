@@ -127,7 +127,6 @@ for (var in vars) {
 }
 
 
-
 #Convertir variables categoricas en factores
 
 db_limpia <- db_limpia %>%
@@ -146,21 +145,26 @@ db_limpia <- db_limpia %>% rename(parentesco_jefe = p6050, segur_social = p6090,
                                   tipo_contrato = p7090, recibe_ing_hor_ext = p6510,
                                   ingreso_hor_ext = p6510s1)
 
+#Eliminamos las observaciones que tienen valores faltantes en neustra variable de resultado
 
-#Imputamos missings
-db_limpia <- kNN(db_limpia, k=3)
+db_nas <- db_limpia %>% filter(is.na(y_ingLab_m_ha))
+db_limpia <- db_limpia %>% filter(!is.na(y_ingLab_m_ha))
+
+#Utilizamos K-Nearest Neighbour para imputar los missings que quedan
+db_limpia <- kNN(db_limpia)
 "kNN se demora mucho, entonces vale la pena hacer otras aproximaciones a la imputación
 de variables primero y luego llenar las que faltan usando kNN"
 missing_percent2 <- colMeans(is.na(db_limpia)) * 100
+db_limpia <- db_limpia %>% select(!ends_with("_imp"))
 
+#Creamos la variable de resultado: el logarítmo natural del salario
+db_limpia$ln_sal <- log(db_limpia$y_ingLab_m_ha) 
 
-#Imputación variables de ingreso salarial: 
+#Guardamos los datos
+export(db_limpia, 'stores/datos_modelos.rds')
 
-#i) Visualización: de las distribuciones de las variables en el vecto "variables" para decidir si imputar por la+
-#---------------- media o la mediana. 
-#Nota: Se agrupa por estrato porque si en promedio una vivienda es la mayor fuente de riqueza y de deuda simultaneamente 
-# el estrato de la vivienda que aspectos de la ubicación y la construcción de la vivienda tambien refleja el patrimonio de las personas. 
-#Fuente: https://www.imf.org/en/Blogs/Articles/2024/12/04/housings-unique-role-in-lives-and-economies-demands-greater-understanding
+#2.3. Estadísticas descriptivas -------------------------------------------------
+#Visualización: de las distribuciones de las variables de ingreso 
 
 variables <- c("y_salary_m", "y_salary_m_hu", "y_ingLab_m", "y_ingLab_m_ha", "y_total_m", "y_total_m_ha") 
 
@@ -178,25 +182,6 @@ for (variable in variables) {
   print(plot)
   
 }
-
-#Las distrubiciones tienen colas izquierdas pesadas y colas derechas largas. Por lo tanto, se decide imputar usando la media. 
-
-
-#ii)Imputar las variables ingreso salarial: 
-
-variables <- c("y_salary_m", "y_salary_m_hu", "y_ingLab_m", "y_ingLab_m_ha", "y_total_m", "y_total_m_ha") 
-
-db <- db %>% 
-  group_by(estrato1) %>% 
-  mutate(across(all_of(variables), ~ ifelse(is.na(.), median(., na.rm = TRUE), .))) %>% 
-  ungroup()
-
-
-
-#Creamos la variable de resultado: el logarítmo natural del salario
-db_limpia$ln_sal <- log(db_limpia$y_ingLab_m_ha) 
-
-
 
 #3. Modelo de regresión lineal -------------------------------------------------
 db_limpia$age_2 <- db_limpia$age^2
