@@ -1,9 +1,9 @@
-#Problem Set 1 -----------------------------------------------------------------
+# Problem Set 1 -----------------------------------------------------------------
 rm(list = ls())
 
-#0. Preparación ----------------------------------------------------------------
+## 0. Preparación ----------------------------------------------------------------
 
-# Librerías 
+### Librerías 
 if(!require(pacman)) install.packages("pacman") ; require(pacman)
 
 library(pacman)
@@ -12,41 +12,41 @@ p_load(tidyverse, rvest, rebus, htmltools, rio, skimr,
        visdat, margins, stargazer, here, VIM, caret, dplyr)
 
 
-# Crear el directorio 
+### Crear el directorio 
 wd <- here()
 setwd(wd)
 rm(wd)
 
-#2.1. Obtener datos ------------------------------------------------------------
+## 2.1. Obtener datos ------------------------------------------------------------
 
 
-# Link para el web scrapping
+### Link para el web scrapping
 link_GEIH <- "https://ignaciomsarmiento.github.io/GEIH2018_sample"
 
 datos_GEIH <-data.frame()
 
 for(page in 1:10) {
-  # Obtenemos la tabla con los datos de cada página
+  ##### Obtenemos la tabla con los datos de cada página
   tabla <- read_html(paste0(link_GEIH, "/pages/geih_page_", page, ".html")) %>%
     html_table() %>%
     as.data.frame()
   
-  # Agregamos la nueva tabla a nuestra base de datos
+  ##### Agregamos la nueva tabla a nuestra base de datos
   datos_GEIH <- bind_rows(datos_GEIH, tabla)
   
-  #Registro de progreso
+  ##### Registro de progreso
   print(paste("Página:", page))
 }
 
 export(datos_GEIH, 'stores/datos_GEIH.rds')
 
-#2.2. Limpieza de datos ---------------------------------------------------------
+## 2.2. Limpieza de datos ---------------------------------------------------------
 
 rm(list = ls())
 db <- readRDS("stores/datos_GEIH.rds") %>% 
   as_tibble()
 
-#i) la condicción para conservar la observación es:  age == edad_personas , ocu === dummy_si_la_persona esta ocupada
+### i) la condicción para conservar la observación es:  age == edad_personas , ocu === dummy_si_la_persona esta ocupada
 
 db_limpia <- db %>% 
   filter(wap == 1 & ocu == 1) 
@@ -54,18 +54,18 @@ db_limpia <- db %>%
 "El método que usamos da lo mismo que el que usaron en la complementaria:
 db_limpia2 <- db %>% filter(totalHoursWorked>0)"
 
-#Eliminar variables de solo missings o que no tienen variación
+#### Eliminar variables de solo missings o que no tienen variación
 
 db_limpia <- db_limpia %>% select_if(~ !all(is.na(.)) & length(unique(.))>1) %>%
   select(!directorio, !secuencia_p, !orden)
 
-# Eliminamos las variables para las cuales más del 60% de las observaciones son faltantes
+### Eliminamos las variables para las cuales más del 60% de las observaciones son faltantes
 missing_percent <- colMeans(is.na(db_limpia)) * 100
 db_limpia <- db_limpia[, missing_percent <= 60]
 
-#Imputar variables categoricas con la categoría más común:
+### Imputar variables categoricas con la categoría más común:
 
-#Función para calcular la moda (el valor más frecuente)
+#### Función para calcular la moda (el valor más frecuente)
 calcular_moda <- function(x) {
   tabla <- table(x)
   moda <- names(tabla)[which.max(tabla)]
@@ -90,7 +90,7 @@ db_limpia <- db_limpia %>%
   ) %>%
   ungroup()
 
-#Ahora realizamos lo mismo, pero con las variables categóricas faltantes
+#### Ahora realizamos lo mismo, pero con las variables categóricas faltantes
 db_limpia <- db_limpia %>%
   group_by(formal, estrato1) %>%
   mutate(
@@ -106,20 +106,19 @@ db_limpia <- db_limpia %>%
   ) %>%
   ungroup()
 
-# Lista de variables a procesar. Se omitieron variables que estaban muy 
-#concentrados en cero y hacian que el límite superior tuviera este mismo valor
+#### Lista de variables a procesar. Se omitieron variables que estaban muy concentrados en cero y hacian que el límite superior tuviera este mismo valor
 vars <- c(
   "p6500", "p6585s2a1", "p6585s3a1", "p6590s1", "p6630s1a1", "p6630s2a1", 
   "p6630s3a1", "p6630s4a1", "p7070", "impa", "isa", "ie", "y_salary_m", "y_salary_m_hu", "y_ingLab_m",
   "y_primaServicios_m", "y_ingLab_m_ha", "y_total_m", "y_total_m_ha"
 )
 
-# Aplicar el proceso a cada variable en el loop
+#### Aplicar el proceso a cada variable en el loop
 for (var in vars) {
-  # Calcular el percentil 97.5% de la variable
+  #### Calcular el percentil 97.5% de la variable
   up <- quantile(db_limpia[[var]], 0.975, na.rm = TRUE)
   
-  # Reemplazar valores mayores o iguales al percentil 97.5%
+  #### Reemplazar valores mayores o iguales al percentil 97.5%
   db_limpia <- db_limpia %>%
     mutate(!!sym(var) := ifelse(test = (.data[[var]] >= up), 
                                 yes = up, 
@@ -127,7 +126,7 @@ for (var in vars) {
 }
 
 
-#Convertir variables categoricas en factores
+### Convertir variables categoricas en factores
 
 db_limpia <- db_limpia %>%
   mutate(across(c(college, cotPension, cuentaPropia, formal, informal, microEmpresa, 
@@ -136,7 +135,7 @@ db_limpia <- db_limpia %>%
                   p6590, p6600, p6610, p6620, p6630s1, p6630s2, p6630s3,p6630s4, 
                   p6630s6, p6920, p7040, p7505, regSalud, relab, sizeFirm), as.factor))
 
-#Renombramos variables para facilitar el manejo de datos
+### Renombramos variables para facilitar el manejo de datos
 db_limpia <- db_limpia %>% rename(parentesco_jefe = p6050, segur_social = p6090, 
                                   regim_segur_social =p6100, nivel_educ = p6210, 
                                   grad_aprob = p6210s1, actividad_prin = p6240, 
@@ -145,26 +144,26 @@ db_limpia <- db_limpia %>% rename(parentesco_jefe = p6050, segur_social = p6090,
                                   tipo_contrato = p7090, recibe_ing_hor_ext = p6510,
                                   ingreso_hor_ext = p6510s1)
 
-#Eliminamos las observaciones que tienen valores faltantes en neustra variable de resultado
+### Eliminamos las observaciones que tienen valores faltantes en neustra variable de resultado
 
 db_nas <- db_limpia %>% filter(is.na(y_ingLab_m_ha))
 db_limpia <- db_limpia %>% filter(!is.na(y_ingLab_m_ha))
 
-#Utilizamos K-Nearest Neighbour para imputar los missings que quedan
+### Utilizamos K-Nearest Neighbour para imputar los missings que quedan
 db_limpia <- kNN(db_limpia)
 "kNN se demora mucho, entonces vale la pena hacer otras aproximaciones a la imputación
 de variables primero y luego llenar las que faltan usando kNN"
 missing_percent2 <- colMeans(is.na(db_limpia)) * 100
 db_limpia <- db_limpia %>% select(!ends_with("_imp"))
 
-#Creamos la variable de resultado: el logarítmo natural del salario
+### Creamos la variable de resultado: el logarítmo natural del salario
 db_limpia$ln_sal <- log(db_limpia$y_ingLab_m_ha) 
 
-#Guardamos los datos
+### Guardamos los datos
 export(db_limpia, 'stores/datos_modelos.rds')
 
-#2.3. Estadísticas descriptivas -------------------------------------------------
-#Visualización: de las distribuciones de las variables de ingreso 
+## 2.3. Estadísticas descriptivas -------------------------------------------------
+### Visualización: de las distribuciones de las variables de ingreso 
 
 variables <- c("y_salary_m", "y_salary_m_hu", "y_ingLab_m", "y_ingLab_m_ha", "y_total_m", "y_total_m_ha") 
 
@@ -183,7 +182,7 @@ for (variable in variables) {
   
 }
 
-#3. Modelo de regresión lineal -------------------------------------------------
+## 3. Modelo de regresión lineal -------------------------------------------------
 db_limpia$age_2 <- db_limpia$age^2
 modelo1 <- lm(ln_sal ~ age + I(age^2), data = db_limpia)
 mar <- summary(margins(modelo1))
