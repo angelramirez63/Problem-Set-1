@@ -134,8 +134,6 @@ stargazer(modelo4b, modelo_4b_fwl, type = "text", omit = "oficio")
 
 
 
-#Normalizar la variable: 
-db$y_ingLab_m_ha_std <- (db$y_total_m_ha - mean_y_ingLab_m_ha)/sd_y_ingLab_m_ha
 
 
 
