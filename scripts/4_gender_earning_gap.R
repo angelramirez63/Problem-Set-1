@@ -2,14 +2,14 @@
 #-----------------------  Punto 4 The Gender Earning Gap -----------------------
 
 
-#0) Alistar ambiente de trabajo ---------------------------------------------------
+#0) Alistar ambiente de trabajo ------------------------------------------------
 rm(list = ls())
 cat("\014")
 
 #Cargar paquetes: 
 if(!require(pacman)) install.packages("pacman") ; require(pacman)
 
-p_load(tidyverse, stargazer, here, skimr)
+p_load(tidyverse, stargazer, here, skimr, boot)
 
 #Definir directorio de trabajo:  
 wd <- here()
@@ -21,7 +21,7 @@ db <- readRDS("stores/datos_modelos.rds") %>%
   as_tibble()
 
 
-#1) Organizar y limpiar datos antes de estimar el modelo --------------------------
+#1) Organizar y limpiar datos antes de estimar el modelo -----------------------
 
 ##1.1)Female variable####
 db <- db %>% 
@@ -98,7 +98,7 @@ summary(db_outliers)
 
 
 
-#2) Estimar el primero modelo --------------------------------------------------
+#2) Estimar el primero modelo sin controles ------------------------------------
 
 #Nota: por ahora voy a estimar el modelo con los outliers 
 
@@ -126,11 +126,34 @@ db <- db %>% mutate(ln_sal_resid = lm(ln_sal ~ nivel_educ + age + sizeFirm + for
 
 #(iii) regresar los residuales de la variable resultado (ii) en los residuales de la variable de interés (iii): 
 modelo_4b_fwl <- lm(ln_sal_resid ~ female_resid, data = db)
-stargazer(modelo4b, modelo_4b_fwl, type = "text", omit = "oficio")
+stargazer(modelo4b, modelo_4b_fwl, type = "text", omit = c("oficio", "nivel_educ", "age", "sizeFirm", "formal", "horas_ocup_prin"))
 
 
 
+##3.3) Estimar el modelo por partialling-out y los SE haciendo bootstrapping####
 
+
+set.seed(123)
+
+#(i) Función que hace la estimación del modelo por partialling-out 
+#Nota: siempre por el índice igual a 2 
+partialling_out <- function (data) {
+  
+  db_resid <- data.frame(row.names = 1:nrow(data))
+  
+  db_resid$x_resid <- lm(female ~ nivel_educ + age + sizeFirm + formal + horas_ocup_prin + oficio, data = data)$residuals
+
+  db_resid$y_resid <- lm(ln_sal ~ nivel_educ + age + sizeFirm + formal + horas_ocup_prin + oficio, data = data)$residuals
+  
+  coef(lm( y_resid ~ x_resid, data = db_resid))[2]
+}
+
+#Prueba función partialling_out:
+partialling_out(db)
+
+
+#(ii) Bootstrapping usando el paquete boot
+boot(db,partialling_out, R = 100)
 
 
 
