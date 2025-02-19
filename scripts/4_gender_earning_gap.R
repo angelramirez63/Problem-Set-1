@@ -137,25 +137,24 @@ set.seed(123)
 
 #(i) Función que hace la estimación del modelo por partialling-out 
 #Nota: siempre por el índice igual a 2 
-partialling_out <- function (data) {
+partialling_out <- function (data, index) {
   
   db_resid <- data.frame(row.names = 1:nrow(data))
   
-  db_resid$x_resid <- lm(female ~ nivel_educ + age + sizeFirm + formal + horas_ocup_prin + oficio, data = data)$residuals
-
-  db_resid$y_resid <- lm(ln_sal ~ nivel_educ + age + sizeFirm + formal + horas_ocup_prin + oficio, data = data)$residuals
+  db_resid$x_resid <- lm(female ~ nivel_educ + age + sizeFirm + formal + horas_ocup_prin + oficio, data = data, subset = index )$residuals
   
-  coef(lm( y_resid ~ x_resid, data = db_resid))[2]
+  db_resid$y_resid <- lm(ln_sal ~ nivel_educ + age + sizeFirm + formal + horas_ocup_prin + oficio, data = data, subset = index)$residuals
+  
+  coef(lm( y_resid ~ x_resid, data = db_resid, subset = index))[2]
 }
 
+
 #Prueba función partialling_out:
-partialling_out(db)
+#partialling_out(db, 1:nrow(db))
 
 
 #(ii) Bootstrapping usando el paquete boot
 boot(db,partialling_out, R = 100)
-
-
 
 
 
