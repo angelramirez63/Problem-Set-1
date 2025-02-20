@@ -9,7 +9,13 @@ cat("\014")
 #Cargar paquetes: 
 if(!require(pacman)) install.packages("pacman") ; require(pacman)
 
-p_load(tidyverse, stargazer, here, skimr, boot)
+p_load(tidyverse #tidy up data
+       ,stargazer #show regression results 
+       ,here #make commons paths to ease co working 
+       ,skimr #summary statistics 
+       ,boot #bootstrapping 
+       ,rio #export data 
+       )
 
 #Definir directorio de trabajo:  
 wd <- here()
@@ -19,6 +25,9 @@ rm(wd)
 #Cargar datos: 
 db <- readRDS("stores/datos_modelos.rds") %>% 
   as_tibble()
+
+#Establecer semilla: 
+set.seed(123)
 
 
 #1) Organizar y limpiar datos antes de estimar el modelo -----------------------
@@ -133,8 +142,6 @@ stargazer(modelo4b, modelo_4b_fwl, type = "text", omit = c("oficio", "nivel_educ
 ##3.3) Estimar el modelo por partialling-out y los SE haciendo bootstrapping####
 
 
-set.seed(123)
-
 #(i) Función que hace la estimación del modelo por partialling-out 
 #Nota: siempre por el índice igual a 2 
 partialling_out <- function (data, index) {
@@ -148,13 +155,54 @@ partialling_out <- function (data, index) {
   coef(lm( y_resid ~ x_resid, data = db_resid, subset = index))[2]
 }
 
+"
+Nota: Tengo que comentar esta función 
+"
 
 #Prueba función partialling_out:
 #partialling_out(db, 1:nrow(db))
 
 
 #(ii) Bootstrapping usando el paquete boot
-boot(db,partialling_out, R = 100)
+
+#R = 1000
+female_boostrap_se_R1000 <-boot(db,partialling_out, R = 1000)
+export(female_boostrap_se_R1000, 'stores/female_boostrap_se_R1000.rds')
+
+#R = 10000
+#Nota: Este bootstrap se demora bastante corriendo por lo que es mejor cargar los resultados guardados en stores
+female_boostrap_se_R10000 <-boot(db,partialling_out, R = 10000)
+export(female_boostrap_se_R10000, 'stores/female_boostrap_se_R10000.rds')
+
+
+
+#4) Gráfico salario con la edad por género -------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
