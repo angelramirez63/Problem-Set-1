@@ -9,7 +9,8 @@ if(!require(pacman)) install.packages("pacman") ; require(pacman)
 library(pacman)
 
 p_load(tidyverse, rvest, rebus, htmltools, rio, skimr,
-       visdat, margins, stargazer, here, VIM, caret, dplyr)
+       visdat, margins, stargazer, here, VIM, caret, 
+       dplyr, gridExtra)
 
 
 # Crear el directorio 
@@ -49,19 +50,24 @@ db <- readRDS("stores/datos_GEIH.rds") %>%
 #i) la condicción para conservar la observación es:  age == edad_personas , ocu === dummy_si_la_persona esta ocupada
 
 db_limpia <- db %>% 
-  filter(wap == 1 & ocu == 1) 
+  filter(age >= 18 & ocu == 1) 
 
 "El método que usamos da lo mismo que el que usaron en la complementaria:
 db_limpia2 <- db %>% filter(totalHoursWorked>0)"
+
+#Eliminamos las observaciones que tienen valores faltantes en neustra variable de resultado
+
+db_nas <- db_limpia %>% filter(is.na(y_ingLab_m_ha))
+db_limpia <- db_limpia %>% filter(!is.na(y_ingLab_m_ha))
+
+# Eliminamos las variables para las cuales más del 60% de las observaciones son faltantes
+missing_percent <- colMeans(is.na(db_limpia)) * 100
+db_limpia <- db_limpia[, missing_percent <= 60]
 
 #Eliminar variables de solo missings o que no tienen variación
 
 db_limpia <- db_limpia %>% select_if(~ !all(is.na(.)) & length(unique(.))>1) %>%
   select(!directorio, !secuencia_p, !orden)
-
-# Eliminamos las variables para las cuales más del 60% de las observaciones son faltantes
-missing_percent <- colMeans(is.na(db_limpia)) * 100
-db_limpia <- db_limpia[, missing_percent <= 60]
 
 #Imputar variables categoricas con la categoría más común:
 
@@ -126,15 +132,23 @@ for (var in vars) {
                                 no = .data[[var]]))
 }
 
+#Borramos el las observaciones influyentes en la relación edad/salario
+
+modelo0 <- lm(y_ingLab_m_ha ~ age + I(age^2), data = db_limpia)
+db_limpia <- db_limpia %>% mutate(leverage = hatvalues(modelo0))
+db_limpia <- db_limpia %>% 
+  filter(leverage<0.005) %>%
+  select(-leverage)
 
 #Convertir variables categoricas en factores
 
 db_limpia <- db_limpia %>%
-  mutate(across(c(college, cotPension, cuentaPropia, formal, informal, microEmpresa, 
+  mutate(across(c(college, cotPension, formal, informal, microEmpresa, regSalud,
                   sex, estrato1, maxEducLevel, oficio, p6050, p6090, p6100, p6210, 
                   p6210s1, p6240, p6545, p6580, p6585s1, p6585s2, p6585s3, p6585s4, 
                   p6590, p6600, p6610, p6620, p6630s1, p6630s2, p6630s3,p6630s4, 
-                  p6630s6, p6920, p7040, p7505, regSalud, relab, sizeFirm), as.factor))
+                  p6630s6, p6920, p7040, p7505, regSalud, relab, sizeFirm, p7510s1,
+                  p7510s2, p7510s3, p7510s5, p7510s6, p7510s7, p7495, p7090), as.factor))
 
 #Renombramos variables para facilitar el manejo de datos
 db_limpia <- db_limpia %>% rename(parentesco_jefe = p6050, segur_social = p6090, 
@@ -142,13 +156,8 @@ db_limpia <- db_limpia %>% rename(parentesco_jefe = p6050, segur_social = p6090,
                                   grad_aprob = p6210s1, actividad_prin = p6240, 
                                   tiempo_trabaj = p6426, cotiza_pens = p6920, 
                                   ingreso_laboral = p6500, horas_ocup_prin = p7040, 
-                                  tipo_contrato = p7090, recibe_ing_hor_ext = p6510,
-                                  ingreso_hor_ext = p6510s1)
+                                  recibe_ing_hor_ext = p6510, ingreso_hor_ext = p6510s1)
 
-#Eliminamos las observaciones que tienen valores faltantes en neustra variable de resultado
-
-db_nas <- db_limpia %>% filter(is.na(y_ingLab_m_ha))
-db_limpia <- db_limpia %>% filter(!is.na(y_ingLab_m_ha))
 
 #Utilizamos K-Nearest Neighbour para imputar los missings que quedan
 db_limpia <- kNN(db_limpia)
@@ -159,6 +168,11 @@ db_limpia <- db_limpia %>% select(!ends_with("_imp"))
 
 #Creamos la variable de resultado: el logarítmo natural del salario
 db_limpia$ln_sal <- log(db_limpia$y_ingLab_m_ha) 
+
+#Creamos la variable female
+db_limpia <- db_limpia %>% 
+  mutate(female = ifelse(sex == 0, yes = 1 , no = 0)) %>%
+  select(-sex)
 
 #Guardamos los datos
 export(db_limpia, 'stores/datos_modelos.rds')
