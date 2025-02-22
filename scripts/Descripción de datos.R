@@ -42,17 +42,17 @@ for (variable in variables) {
 }
 
 # Calcular el salario por hora promedio por edad
-df_summary <- db_filter %>%
+df_summary <- db_limpia %>%
   group_by(age) %>%
   summarise(salario_promedio = mean(y_ingLab_m_ha, na.rm = TRUE))
 
 # Crear el gráfico
 ggplot(df_summary, aes(x = age, y = salario_promedio)) +
-  geom_line(color = "blue", size = 1) +  # Línea azul
-  geom_point(color = "red", size = 2) +  # Puntos rojos
+  geom_line(color = "blue", size = 0.7) +  # Línea azul
+  geom_point(color = "darkblue", size = 1.5) +  # Puntos rojos
   labs(
-    title = "Salario por Hora Promedio por Edad",
+    title = "Salario por hora promedio por edad",
     x = "Edad",
-    y = "Salario por Hora Promedio"
+    y = "Salario por hora"
   ) +
   theme_minimal()  # Estilo limpio y profesional
