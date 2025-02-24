@@ -116,8 +116,8 @@ db_limpia <- db_limpia %>%
 #concentrados en cero y hacian que el límite superior tuviera este mismo valor
 vars <- c(
   "p6500", "p6585s2a1", "p6585s3a1", "p6590s1", "p6630s1a1", "p6630s2a1", 
-  "p6630s3a1", "p6630s4a1", "p7070", "impa", "isa", "ie", "y_salary_m", "y_salary_m_hu", "y_ingLab_m",
-  "y_primaServicios_m", "y_ingLab_m_ha", "y_total_m", "y_total_m_ha"
+  "p6630s3a1", "p6630s4a1", "p7070", "impa", "isa", "ie", "y_salary_m", "y_salary_m_hu",
+  "y_primaServicios_m", "y_total_m", "y_total_m_ha", "y_ingLab_m", "y_ingLab_m_ha"
 )
 
 # Aplicar el proceso a cada variable en el loop
@@ -140,12 +140,17 @@ db_limpia <- db_limpia %>%
   filter(leverage<0.005) %>%
   select(-leverage)
 
+#Categorías variables 
+
+db_limpia <- db_limpia %>%
+  mutate(p7040 = ifelse(p7040 == 2, 0, 1))
+
 #Convertir variables categoricas en factores
 
 db_limpia <- db_limpia %>%
   mutate(across(c(college, cotPension, formal, informal, microEmpresa, regSalud,
                   sex, estrato1, maxEducLevel, oficio, p6050, p6090, p6100, p6210, 
-                  p6210s1, p6240, p6545, p6580, p6585s1, p6585s2, p6585s3, p6585s4, 
+                  p6240, p6545, p6580, p6585s1, p6585s2, p6585s3, p6585s4, 
                   p6590, p6600, p6610, p6620, p6630s1, p6630s2, p6630s3,p6630s4, 
                   p6630s6, p6920, p7040, p7505, regSalud, relab, sizeFirm, p7510s1,
                   p7510s2, p7510s3, p7510s5, p7510s6, p7510s7, p7495, p7090), as.factor))
@@ -155,7 +160,7 @@ db_limpia <- db_limpia %>% rename(parentesco_jefe = p6050, segur_social = p6090,
                                   regim_segur_social =p6100, nivel_educ = p6210, 
                                   grad_aprob = p6210s1, actividad_prin = p6240, 
                                   tiempo_trabaj = p6426, cotiza_pens = p6920, 
-                                  ingreso_laboral = p6500, horas_ocup_prin = p7040, 
+                                  ingreso_laboral = p6500, segundo_trabajo = p7040, 
                                   recibe_ing_hor_ext = p6510, ingreso_hor_ext = p6510s1)
 
 
@@ -174,32 +179,9 @@ db_limpia <- db_limpia %>%
   mutate(female = ifelse(sex == 0, yes = 1 , no = 0)) %>%
   select(-sex)
 
+db_limpia$female <- as.factor(db_limpia$female)
+
 #Guardamos los datos
 export(db_limpia, 'stores/datos_modelos.rds')
 
-#2.3. Estadísticas descriptivas -------------------------------------------------
-#Visualización: de las distribuciones de las variables de ingreso 
 
-variables <- c("y_salary_m", "y_salary_m_hu", "y_ingLab_m", "y_ingLab_m_ha", "y_total_m", "y_total_m_ha") 
-
-
-for (variable in variables) {
-  
-  plot <- ggplot(db_limpia, aes_string(variable)) +
-    geom_histogram(color = "#000000", fill = "#0099F8") +
-    geom_vline(xintercept = median(db_limpia[[variable]], na.rm = TRUE), linetype = "dashed", color = "red") +
-    geom_vline(xintercept = mean(db_limpia[[variable]], na.rm = TRUE), linetype = "dashed", color = "blue") +  
-    ggtitle(paste("Distribución", as.character(variable), sep = " ")) +
-    theme_classic() +
-    theme(plot.title = element_text(size = 18))
-  
-  print(plot)
-  
-}
-
-#3. Modelo de regresión lineal -------------------------------------------------
-db_limpia$age_2 <- db_limpia$age^2
-modelo1 <- lm(ln_sal ~ age + I(age^2), data = db_limpia)
-mar <- summary(margins(modelo1))
-
-stargazer(modelo1, type = "latex", title = "Resultados Modelo 1", out = "Views/mod1.txt", digits = 5)
