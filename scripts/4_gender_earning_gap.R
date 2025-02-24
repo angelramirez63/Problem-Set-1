@@ -32,6 +32,10 @@ set.seed(123)
 
 #1) Organizar y limpiar datos antes de estimar el modelo -----------------------
 
+#1.1) Volver female una variable númerica para poder usarla como variable de respuesta usando lm()
+
+db <- db %>% 
+      mutate(female = as.numeric(female))
 
 ##1.2) Visualizar variable salario nominal por hora####
 
@@ -117,16 +121,16 @@ stargazer(modelo4a, type = "text")
 #La variable de interés es female
 
 ##3.1) Modelo####
-modelo4b <- lm(ln_sal ~ female + nivel_educ + age + sizeFirm + formal + horas_ocup_prin + oficio + estrato1 ,data = db)
-stargazer(modelo4b, type = "text", omit =  c("oficio", "nivel_educ", "age", "sizeFirm", "formal", "horas_ocup_prin", "estrato1"))
+modelo4b <- lm(ln_sal ~ female + nivel_educ + age + sizeFirm + formal + oficio + estrato1 ,data = db)
+stargazer(modelo4a, modelo4b, type = "text", omit =  c("oficio", "nivel_educ", "age", "sizeFirm", "formal", "estrato1"))
 
 ##3.2) Estimar el modelo por partialling-out/FWL####
 
 #(i) Regresión auxiliar de female en los controles: representa la parte de female que no esta explicada por los controles
-db <- db %>% mutate(female_resid = lm(female ~ nivel_educ + age + sizeFirm + formal + horas_ocup_prin + oficio + estrato1 ,data = db)$residuals)
+db <- db %>% mutate(female_resid = lm(female ~ nivel_educ + age + sizeFirm + formal + oficio + estrato1 ,data = db)$residuals)
 
 #(ii) Regresión auxiliar de ln_sal en los controles: representa la parte de ln_sal que no esta explicada por los controles
-db <- db %>% mutate(ln_sal_resid = lm(ln_sal ~ nivel_educ + age + sizeFirm + formal + horas_ocup_prin + oficio + estrato1 ,data = db)$residuals) 
+db <- db %>% mutate(ln_sal_resid = lm(ln_sal ~ nivel_educ + age + sizeFirm + formal + oficio + estrato1 ,data = db)$residuals) 
 
 #(iii) regresar los residuales de la variable resultado (ii) en los residuales de la variable de interés (iii): 
 modelo_4b_fwl <- lm(ln_sal_resid ~ female_resid, data = db)
@@ -160,9 +164,9 @@ partialling_out <- function (data, index) {
   
   db_resid <- data.frame(row.names = 1:nrow(data))
   
-  db_resid$x_resid <- lm(female ~ nivel_educ + age + sizeFirm + formal + horas_ocup_prin + oficio + estrato1, data = data, subset = index )$residuals
+  db_resid$x_resid <- lm(female ~ nivel_educ + age + sizeFirm + formal + oficio + estrato1, data = data, subset = index )$residuals
   
-  db_resid$y_resid <- lm(ln_sal ~ nivel_educ + age + sizeFirm + formal + horas_ocup_prin + oficio + estrato1, data = data, subset = index)$residuals
+  db_resid$y_resid <- lm(ln_sal ~ nivel_educ + age + sizeFirm + formal + oficio + estrato1, data = data, subset = index)$residuals
   
   coef(lm( y_resid ~ x_resid, data = db_resid, subset = index))[2]
 }
@@ -249,8 +253,10 @@ salary_plot_2 <-ggplot(data = average_salary_per_age_db, mapping = aes( x = age 
 #PLAYGROUND---------------------------------------------------------------------------------------------------------
 
 
+db_original <- readRDS("stores/datos_GEIH.rds") %>% 
+  as_tibble()
 
-# Sample Data
+#Sample Data
 
 
 # Plot with a smooth line
