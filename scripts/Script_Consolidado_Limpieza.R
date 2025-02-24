@@ -132,6 +132,12 @@ for (var in vars) {
                                 no = .data[[var]]))
 }
 
+#### Para no tener problemas con las variables de entrenamiento y testeo, eliminamos las observaciones cuyos valores agrupados por oficio sean menores que cero
+db_limpia <- db_limpia %>%
+  group_by(oficio) %>%
+  filter(n() >= 5) %>%
+  ungroup()
+
 #Borramos el las observaciones influyentes en la relación edad/salario
 
 modelo0 <- lm(y_ingLab_m_ha ~ age + I(age^2), data = db_limpia)
