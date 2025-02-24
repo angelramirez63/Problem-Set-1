@@ -246,6 +246,14 @@ db <- db %>%
 
 ### a) 
 
+#### Para no tener problemas con las variables de entrenamiento y testeo, eliminamos las observaciones cuyos valores agrupados por oficio sean menores que cero
+
+db <- db %>%
+  group_by(oficio) %>%        # Agrupa por la variable categórica
+  filter(n() >= 5) %>%           # Filtra solo categorías con 5 o más observaciones
+  ungroup()
+
+### Creando semilla
 set.seed(9963)
 
 inTrain <- createDataPartition(
