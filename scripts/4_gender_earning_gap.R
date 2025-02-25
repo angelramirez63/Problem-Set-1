@@ -35,7 +35,8 @@ set.seed(123)
 #1.1) Volver female una variable númerica para poder usarla como variable de respuesta usando lm()
 
 db <- db %>% 
-      mutate(female = as.numeric(female))
+      mutate(female = as.numeric(female)) %>%
+      mutate(female = ifelse(female == 2, 1, 0))
 
 ##1.2) Visualizar variable salario nominal por hora####
 
@@ -149,18 +150,19 @@ db$ln_sal_predicted <- predict(modelo_4b_fwl)
 
 partialling_out <- function (data, index) {
   
-  #Función partialling-out: Esta función hace partilling-out para estimar el si hay una brecha de género en el salario por hora. La función
-  #------------------------ usa explica el salario por hora usando el nivel de educación, la edad, el tamaño de la firma, si es formal o informal, 
-  # las horas que trabajo en su ocupación pricipal, la ocupación y el estrato de la persona 
+  #Función partialling-out: Esta función hace partilling-out para estimar el si existe una brecha de género en el salario por hora. Se usan como
+  #------------------------  controles el nivel de educación, la edad, el tamaño de la firma, si es formal o informal, el oficio/ocupación de 
+  # la persona y el estrato
+  
   
   #Parámetros: 
   #----------       
               #db: base de datos con la información de la GEIH 
-              #index: número de observacione de la base de datos el índice para facilitar usar esta función con el 
-              #       paquete boot 
+              #index: número de observaciones en db. El índice facilita el uso de esta función con paquete boot 
+  
   
   #Return: el coeficiente de la variable female obtenido al hacer partillaing out 
-  #-------
+  #------
   
   db_resid <- data.frame(row.names = 1:nrow(data))
   
@@ -198,12 +200,12 @@ female_boostrap_se_R10000 <- readRDS("stores/female_boostrap_se_R10000.rds")
 ##4.1) Colapsar base de datos a nivel de género y año####
 #Nota: Se colapsa la base a nivel de género y año para la media del salario por horas 
 average_salary_per_age_db  <- db %>% 
-                              select(age, female, ln_sal_predicted) %>%
+                              select(age, female, y_ingLab_m_ha) %>%
                               group_by(age, female) %>%
-                              summarise(mean_salary_per_hour = mean(ln_sal_predicted))
+                              summarise(mean_salary_per_hour = mean(y_ingLab_m_ha))
 
 ##4.2) Hacer un gráfico preliminar de la relación ingreso/edad por género####
-salary_plot_1 <-ggplot(data = average_salary_per_age_db, mapping = aes( x = age , y = mean_salary_per_hour, group = female)) +
+salary_plot_1 <-ggplot(data = average_salary_per_age_db, mapping = aes( x = age , y = mean_salary_per_hour, group = female, color = female)) +
   geom_line() 
 
 #Nota: hay unos picos irregulares en 70, 78 y 80 años con salarios por hora de 41253.7 que es el valor que se uso
@@ -225,12 +227,13 @@ db_outliers <- db %>%
 
 #4.4) Conservar las observaciones que esten en el intervalo de confianza de 95%####
 #Para el salario por hora
-#Quimos los años con menos de 25 observaciones para no seguir tan de cerca a pocas observaciones para un año
-
+#Quitamos los años con menos de 25 observaciones para no seguir tan de cerca a pocas observaciones para un año
+#table(db$female, db$age)
 
 db_sin_outliers <- db %>% 
-                      filter(low < y_ingLab_m_ha & y_ingLab_m_ha < up) %>%
-                      filter(18< age &  age < 66)
+                   filter(y_ingLab_m_ha < 24297) %>%
+                   filter(age < 62) %>% 
+                   mutate (female = as.factor(female))
 
 
 ##4.5) Volver a hacer el gráfico####
@@ -243,10 +246,21 @@ average_salary_per_age_db  <- db_sin_outliers %>%
                               summarise(mean_salary_per_hour = mean(y_ingLab_m_ha))
 
 #ii) Gráfico ingreso relación ingreso/edad por género (otra vez)
-salary_plot_2 <-ggplot(data = average_salary_per_age_db, mapping = aes( x = age , y = mean_salary_per_hour, group = female)) +
-                 geom_line() 
+salary_plot_2 <-ggplot(data = average_salary_per_age_db, mapping = aes( x = age , y = mean_salary_per_hour, group = female, color = female)) +
+                 geom_smooth(method = "gam", se = FALSE) + 
+                 scale_x_continuous(breaks = c(20, 25, 30, 35, 40, 45, 50, 55, 60, 65)) +
+                 labs(title = "Dinámica promedio salario por hora con la edad" , x = "Edad", y = "Promedio salario por hora", color = "") + 
+                 scale_color_manual(labels = c("Hombres", "Mujeres"), values = c("coral2", "deepskyblue")) + 
+                 theme_minimal()
 
 
+salary_plot_3 <-ggplot(data = average_salary_per_age_db, mapping = aes( x = age , y = mean_salary_per_hour, group = female, color = female)) +
+                geom_line() +
+                geom_point() + 
+                scale_x_continuous(breaks = c(20, 25, 30, 35, 40, 45, 50, 55, 60, 65)) +
+                labs(title = "Dinámica promedio salario por hora con la edad" , x = "Edad", y = "Promedio salario por hora", color = "") + 
+                scale_color_manual(labels = c("Hombres", "Mujeres"), values = c("coral2", "deepskyblue")) + 
+                theme_minimal()
 
 
 
