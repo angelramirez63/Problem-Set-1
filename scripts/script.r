@@ -196,11 +196,6 @@ rm(list = ls())
 db <- readRDS("stores/datos_modelos.rds") %>% 
   as_tibble()
 
-#### Editar variable categórica para género, 1 sea igual a mujer
-db<- db %>% 
-  mutate(female=ifelse(sex==1,0,1)) %>% 
-  select(-sex & -cuentaPropia)
-
 #### Crear esperiencia potencial
 db <- db %>%
   mutate(
@@ -213,15 +208,12 @@ table(db$exp_pot)
 
 table(db$grad_aprob)
 
-db <- db %>%
-  filter(grad_aprob < 16)
-
 #### Renombrar variables
 
 db <- db %>%
   rename(
     ##### Ingresos laborales
-    ing_primas = p6545s1, ing_bonif = p6580s1, ing_lab_secundario = p7070,       
+    ing_primas = p6545s1, ing_bonif = p6580s1, ing_lab_secundario = p7070,    
     
     ##### Subsidios
     subs_alimentacion = p6585s1a1, subs_transporte = p6585s2a1,         
@@ -253,7 +245,8 @@ db <- db %>%
   filter(n() >= 5) %>%           # Filtra solo categorías con 5 o más observaciones
   ungroup()
 
-### Creando semilla
+### Crear semilla
+
 set.seed(9963)
 
 inTrain <- createDataPartition(
@@ -272,7 +265,9 @@ testing  <- db %>%
 
 #### Primer modelo
 
-modelo1a <- lm(ln_sal ~ age + I(age^2), data = training)
+form_1 <- ln_sal ~ age + I(age^2)
+
+modelo1a <- lm(form_1, data = training)
 
 predictions <- predict(modelo1a, testing)
 score1a<- RMSE(predictions, testing$ln_sal )
@@ -281,7 +276,9 @@ score1a
 
 #### Segundo modelo, falta
 
-modelo2a <- lm(ln_sal ~ female, data = training)
+form_2 <- ln_sal ~ female
+
+modelo2a <- lm(form_2, data = training)
 
 predictions <- predict(modelo2a, testing)
 score2a<- RMSE(predictions, testing$ln_sal )
@@ -290,7 +287,10 @@ score2a
 
 #### Tercer modelo
 
-modelo3a <- lm(ln_sal ~ female + exp_pot + nivel_educ, data = training)
+form_3 <- ln_sal ~ female + nivel_educ + age + sizeFirm + formal + 
+  oficio + estrato1
+
+modelo3a <- lm(form_3, data = training)
 
 predictions <- predict(modelo3a, testing)
 score3a<- RMSE(predictions, testing$ln_sal )
@@ -299,7 +299,10 @@ score3a
 
 #### Cuarto modelo
 
-modelo4a <- lm(ln_sal ~ female + exp_pot + estrato1 + age + nivel_educ + totalHoursWorked + formal, data = training)
+form_4 <- ln_sal ~ female + nivel_educ + age + I(age^2) + sizeFirm + 
+  formal + oficio + estrato1 + exp_pot + I(exp_pot^2) + totalHoursWorked
+ 
+modelo4a <- lm(form_4, data = training)
 
 predictions <- predict(modelo4a, testing)
 score4a<- RMSE(predictions, testing$ln_sal )
@@ -308,7 +311,10 @@ score4a
 
 #### Quinto modelo
 
-modelo5a <- lm(ln_sal ~ female + exp_pot + I(exp_pot^2) + estrato1 + age + I(age^2) + nivel_educ + totalHoursWorked + formal, data = training)
+form_5 <- ln_sal ~ female:parentesco_jefe + nivel_educ:poly(age,4,raw=TRUE) + 
+  sizeFirm + formal + oficio + estrato1 + poly(exp_pot,4,raw=TRUE) + totalHoursWorked
+
+modelo5a <- lm(form_5, data = training)
 
 predictions <- predict(modelo5a, testing)
 score5a<- RMSE(predictions, testing$ln_sal )
@@ -317,7 +323,13 @@ score5a
 
 #### Sexto modelo
 
-modelo6a <- lm(ln_sal ~ female + exp_pot + I(exp_pot^2) + estrato1 + age + I(age^2) + nivel_educ + totalHoursWorked + formal + parentesco_jefe + segur_social + regim_segur_social + grad_aprob + actividad_prin + oficio + tiempo_trabaj + relab + cotiza_pens + sizeFirm, data = training)
+form_6 <- ln_sal ~ female:parentesco_jefe + nivel_educ:poly(age,4,raw=TRUE) + 
+  sizeFirm:formal + oficio + estrato1 + poly(exp_pot,4,raw=TRUE) + 
+  totalHoursWorked + subs_alimentacion + subs_transporte + subs_familiar + subs_educ +
+  prima_servicios + prima_navidad + prima_vacaciones + 
+  viaticos_bonif + bonif_anuales
+
+modelo6a <- lm(form_6, data = training)
 
 predictions <- predict(modelo6a, testing)
 score6a<- RMSE(predictions, testing$ln_sal )
@@ -326,7 +338,19 @@ score6a
 
 #### Séptimo modelo
 
-modelo7a <- lm(ln_sal ~ female + exp_pot + I(exp_pot^2) + estrato1 + age + I(age^2) + nivel_educ + totalHoursWorked + formal + parentesco_jefe + segur_social + regim_segur_social + grad_aprob + actividad_prin + oficio + tiempo_trabaj + relab + cotiza_pens + sizeFirm + subs_alimentacion + subs_transporte + subs_familiar + subs_educ + val_alimentos_especie + val_vivienda_especie + val_transporte_especie + val_otros_especie + prima_servicios + prima_navidad + prima_vacaciones + viaticos_bonif + bonif_anuales, data = training)
+form_7 <- ln_sal ~ female:parentesco_jefe + nivel_educ:poly(age,4,raw=TRUE) + 
+  sizeFirm:formal + oficio + estrato1 + poly(exp_pot,4,raw=TRUE) + 
+  totalHoursWorked + subs_alimentacion + subs_transporte + subs_familiar + 
+  subs_educ + prima_servicios + prima_navidad + prima_vacaciones + 
+  viaticos_bonif + bonif_anuales + ing_primas + ing_bonif + ing_lab_secundario + 
+  ing_arriendos + ing_pension + ing_pension_alimenticia + 
+  ing_otros_hogares + ing_otros_hogares_extranjero + 
+  ing_ayudas_instituciones + ing_intereses_dividendos + 
+  ing_cesantias + ing_otras_fuentes + val_alimentos_especie + 
+  val_vivienda_especie + val_transporte_especie + val_otros_especie
+
+
+modelo7a <- lm(form_7, data = training)
 
 predictions <- predict(modelo7a, testing)
 score7a<- RMSE(predictions, testing$ln_sal )
@@ -335,9 +359,29 @@ score7a
 
 #### Octavo modelo
 
-modelo8a <- lm(ln_sal ~ female + exp_pot + I(exp_pot^2) + estrato1 + age + I(age^2) + nivel_educ + totalHoursWorked + formal + parentesco_jefe + segur_social + regim_segur_social + grad_aprob + actividad_prin + oficio + tiempo_trabaj + relab + cotiza_pens + sizeFirm + ingreso_laboral + ingreso_hor_ext + ing_primas + ing_bonif + ing_lab_secundario + subs_alimentacion + subs_transporte + subs_familiar + subs_educ + val_alimentos_especie + val_vivienda_especie + val_transporte_especie + val_otros_especie + prima_servicios + prima_navidad + prima_vacaciones + viaticos_bonif + bonif_anuales + ing_arriendos + ing_pension + ing_pension_alimenticia + ing_otros_hogares + ing_otros_hogares_extranjero + ing_ayudas_instituciones + ing_intereses_dividendos + ing_cesantias + ing_otras_fuentes, data = training)
+form_8 <- ln_sal ~ female:parentesco_jefe + nivel_educ:poly(age,8,raw=TRUE) + 
+  sizeFirm:formal + oficio + estrato1 + poly(exp_pot,8,raw=TRUE) + 
+  totalHoursWorked + ing_primas + ing_bonif + ing_lab_secundario + 
+  ing_arriendos + ing_pension + ing_pension_alimenticia + 
+  ing_otros_hogares + ing_otros_hogares_extranjero + 
+  ing_ayudas_instituciones + ing_intereses_dividendos + 
+  ing_cesantias + ing_otras_fuentes + val_alimentos_especie + 
+  val_vivienda_especie + val_transporte_especie + val_otros_especie +
+  subs_alimentacion + subs_transporte + subs_familiar + subs_educ +
+  prima_servicios + prima_navidad + prima_vacaciones + 
+  viaticos_bonif + bonif_anuales
+
+modelo8a <- lm(form_8, data = training)
 
 predictions <- predict(modelo8a, testing)
 score8a<- RMSE(predictions, testing$ln_sal )
 
 score8a
+
+
+scores<- data.frame( Model= c(1, 2, 3, 4, 5, 6, 7, 8),
+                    RMSE_vsa= c(score1a, score2a, score3a, score4a, 
+                                score5a, score6a, score7a, score8a)
+                    )
+
+head(scores)
