@@ -274,7 +274,7 @@ score1a<- RMSE(predictions, testing$ln_sal )
 
 score1a
 
-#### Segundo modelo, falta
+#### Segundo modelo
 
 form_2 <- ln_sal ~ female
 
@@ -288,7 +288,7 @@ score2a
 #### Tercer modelo
 
 form_3 <- ln_sal ~ female + nivel_educ + age + sizeFirm + formal + 
-  oficio + estrato1
+                 oficio + estrato1
 
 modelo3a <- lm(form_3, data = training)
 
@@ -300,7 +300,8 @@ score3a
 #### Cuarto modelo
 
 form_4 <- ln_sal ~ female + nivel_educ + age + I(age^2) + sizeFirm + 
-  formal + oficio + estrato1 + exp_pot + I(exp_pot^2) + totalHoursWorked
+                  formal + oficio + estrato1 + exp_pot + I(exp_pot^2) + 
+                  totalHoursWorked
  
 modelo4a <- lm(form_4, data = training)
 
@@ -312,7 +313,8 @@ score4a
 #### Quinto modelo
 
 form_5 <- ln_sal ~ female:parentesco_jefe + nivel_educ:poly(age,4,raw=TRUE) + 
-  sizeFirm + formal + oficio + estrato1 + poly(exp_pot,4,raw=TRUE) + totalHoursWorked
+                  sizeFirm + formal + oficio + estrato1 + 
+                  poly(exp_pot,4,raw=TRUE) + totalHoursWorked
 
 modelo5a <- lm(form_5, data = training)
 
@@ -324,10 +326,10 @@ score5a
 #### Sexto modelo
 
 form_6 <- ln_sal ~ female:parentesco_jefe + nivel_educ:poly(age,4,raw=TRUE) + 
-  sizeFirm:formal + oficio + estrato1 + poly(exp_pot,4,raw=TRUE) + 
-  totalHoursWorked + subs_alimentacion + subs_transporte + subs_familiar + subs_educ +
-  prima_servicios + prima_navidad + prima_vacaciones + 
-  viaticos_bonif + bonif_anuales
+    sizeFirm:formal + oficio + estrato1 + poly(exp_pot,4,raw=TRUE) +
+    totalHoursWorked + subs_alimentacion + subs_transporte + subs_familiar + subs_educ +
+    prima_servicios + prima_navidad + prima_vacaciones + 
+    viaticos_bonif + bonif_anuales
 
 modelo6a <- lm(form_6, data = training)
 
@@ -339,8 +341,9 @@ score6a
 #### Séptimo modelo
 
 form_7 <- ln_sal ~ female:parentesco_jefe + nivel_educ:poly(age,4,raw=TRUE) + 
-  sizeFirm:formal + oficio + estrato1 + poly(exp_pot,4,raw=TRUE) + 
-  totalHoursWorked + subs_alimentacion + subs_transporte + subs_familiar + 
+  sizeFirm:formal + oficio + estrato1 + 
+  poly(exp_pot,4,raw=TRUE):poly(totalHoursWorked,4,raw=TRUE) + 
+  subs_alimentacion + subs_transporte + subs_familiar + 
   subs_educ + prima_servicios + prima_navidad + prima_vacaciones + 
   viaticos_bonif + bonif_anuales + ing_primas + ing_bonif + ing_lab_secundario + 
   ing_arriendos + ing_pension + ing_pension_alimenticia + 
@@ -360,8 +363,8 @@ score7a
 #### Octavo modelo
 
 form_8 <- ln_sal ~ female:parentesco_jefe + nivel_educ:poly(age,8,raw=TRUE) + 
-  sizeFirm:formal + oficio + estrato1 + poly(exp_pot,8,raw=TRUE) + 
-  totalHoursWorked + ing_primas + ing_bonif + ing_lab_secundario + 
+  sizeFirm:formal + oficio + estrato1 + 
+  poly(exp_pot,8,raw=TRUE):poly(totalHoursWorked,8,raw=TRUE) + ing_primas + ing_bonif + ing_lab_secundario + 
   ing_arriendos + ing_pension + ing_pension_alimenticia + 
   ing_otros_hogares + ing_otros_hogares_extranjero + 
   ing_ayudas_instituciones + ing_intereses_dividendos + 
@@ -378,10 +381,66 @@ score8a<- RMSE(predictions, testing$ln_sal )
 
 score8a
 
+### c)
 
-scores<- data.frame( Model= c(1, 2, 3, 4, 5, 6, 7, 8),
-                    RMSE_vsa= c(score1a, score2a, score3a, score4a, 
+#### Resultados de los modelos
+scores<- data.frame( Modelo= c(1, 2, 3, 4, 5, 6, 7, 8),
+                    RMSE= c(score1a, score2a, score3a, score4a, 
                                 score5a, score6a, score7a, score8a)
                     )
 
-head(scores)
+scores
+
+stargazer(scores[, c("Modelo", "RMSE")], type = "latex", title = "Resultados de Modelos",
+          summary = FALSE, digits = 4, out = "tabla_modelos.tex",
+          omit.summary.stat = c("n"))
+
+#### gráfica de los errores
+
+RMSE_vsa   <-  c(score1a, score2a, score3a, score4a, score5a, score6a, 
+                 score7a, score8a)
+
+scores<- data.frame( Modelo= c(1, 2, 3, 4, 5, 6, 7, 8),
+                     Aproximación= c("Validation set"),
+                     RMSE= c(RMSE_vsa)
+)             
+              
+ggplot(scores, aes(x = Modelo, y = RMSE, col = Aproximación)) + 
+  geom_line(size = 0.5) +
+  theme_bw() +
+  ggtitle("Desempeño de los modelos") +
+  theme(plot.title = element_text(hjust = 0.5)) 
+
+#### Outliers de la muestra
+
+##### Distribución del modelo con mejor predicción
+residuos <- residuals(modelo6a)
+
+df_residuos <- data.frame(Errores = residuos)
+
+ggplot(df_residuos, aes(x = Errores)) +
+  geom_histogram(aes(y = ..density..), bins = 30, fill = "lightblue", color = "black", alpha = 0.7) +  
+  theme_bw() +
+  ggtitle("Distribución de los errores del modelo 6") +
+  xlab("Errores") +
+  ylab("Densidad") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+##### Encontrar outliers con cuartiles
+
+Q1 <- quantile(training$residuos, 0.25)
+Q3 <- quantile(training$residuos, 0.75)
+IQR <- Q3 - Q1  
+
+limite_inferior <- Q1 - 1.5 * IQR
+limite_superior <- Q3 + 1.5 * IQR
+
+training$residuos <- NA
+training$residuos[as.numeric(rownames(training))] <- residuals(modelo6a)
+
+db_outliers <- training %>%
+  filter(residuos < limite_inferior | residuos > limite_superior)
+
+### d)
+
+
