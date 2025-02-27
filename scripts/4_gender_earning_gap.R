@@ -108,7 +108,7 @@ summary(db_outliers)
 
 
 
-#2) Estimar el primero modelo sin controles ------------------------------------
+#2) Estimar el primero modelo sin y con controles ------------------------------
 
 #Nota: por ahora voy a estimar el modelo con los outliers 
 
@@ -285,11 +285,11 @@ average_salary_per_age_db  <- db_sin_outliers %>%
 
 #ii) Gráfico ingreso relación ingreso/edad por género (otra vez)
 salary_plot_2 <-ggplot(data = average_salary_per_age_db, mapping = aes( x = age , y = mean_salary_per_hour, group = female, color = female)) +
-                 geom_smooth(method = "gam", se = FALSE) + 
-                 scale_x_continuous(breaks = c(20, 25, 30, 35, 40, 45, 50, 55, 60, 65)) +
-                 labs(title = "Dinámica promedio salario por hora con la edad" , x = "Edad", y = "Promedio salario por hora", color = "") + 
-                 scale_color_manual(labels = c("Hombres", "Mujeres"), values = c("coral2", "deepskyblue")) + 
-                 theme_minimal()
+                geom_smooth(method = "gam", fill="#69b3a2" ,se = T, level = 0.95) + 
+                scale_x_continuous(breaks = c(20, 25, 30, 35, 40, 45, 50, 55, 60, 65)) +
+                labs(title = "Dinámica promedio salario por hora con la edad" , x = "Edad", y = "Promedio salario por hora", color = "") + 
+                scale_color_manual(labels = c("Hombres", "Mujeres"), values = c("coral2", "deepskyblue")) + 
+                theme_minimal()
 
 
 salary_plot_3 <-ggplot(data = average_salary_per_age_db, mapping = aes( x = age , y = mean_salary_per_hour, group = female, color = female)) +
@@ -300,161 +300,11 @@ salary_plot_3 <-ggplot(data = average_salary_per_age_db, mapping = aes( x = age 
                   scale_color_manual(labels = c("Hombres", "Mujeres"), values = c("coral2", "deepskyblue")) + 
                   theme_minimal()
 
-##4.6) Intervalos de confianza para las muestras por año####
-
-
-###Mujeres####
-
-#Base de interés para ahorrarle un paso a la iteración: 
-db_sin_outliers_short_female <- db_sin_outliers %>% 
-                         select(age, female, ln_sal_predicted) %>%
-                         filter(female == 1)
-
-#Base de datos donde vamos a guardar los intervalos de confianza para las mujeres y contador
-ci_95_female <- data.frame(age = 18:61, female = 1 ,upper = NA, lower = NA)
-contador_fila <- 1
-R <- 1000
-
-for (edad in 18:61) {
-  
-  #1) Hacer una base de datos que solo tengas los valores de un año 
-  db_edad <- db_sin_outliers_short_female %>%
-             filter(age == edad)
-  
-  #2) Hacer bootstrap para la media del salario para el año
-  se_edad <- do(R)*mean(~ln_sal_predicted, data=mosaic::resample(db_edad))
-  
-  #3) Calcular el intervalo de confianza al 95%
-  ci_se_edad <- confint(se_edad, level=0.95)
-  
-  #4) Agregar los límires supeior e inferior del intervarlo a la base 
-  ci_95_female[contador_fila,3] <- ci_se_edad$upper
-  ci_95_female[contador_fila,4] <- ci_se_edad$lower
-  
-  #5) Incrementar en 1 el contador 
-  contador_fila <- contador_fila + 1
-              
-}
-
-ci_95_female <- ci_95_female %>% as.tibble()
-
-###Hombres#### 
-
-#Base de interés para ahorrarle un paso a la iteración: 
-db_sin_outliers_short_man <- db_sin_outliers %>% 
-                                select(age, female, ln_sal_predicted) %>%
-                                filter(female == 0)
-
-#Base de datos donde vamos a guardar los intervalos de confianza para las mujeres y contador
-ci_95_man <- data.frame(age = 18:61, female = 0 ,upper = NA, lower = NA)
-contador_fila <- 1
-R <- 1000
-
-for (edad in 18:61) {
-  
-  #1) Hacer una base de datos que solo tengas los valores de un año 
-  db_edad <- db_sin_outliers_short_man %>%
-                                       filter(age == edad)
-  
-  #2) Hacer bootstrap para la media del salario para el año
-  se_edad <- do(R)*mean(~ln_sal_predicted, data=mosaic::resample(db_edad))
-  
-  #3) Calcular el intervalo de confianza al 95%
-  ci_se_edad <- confint(se_edad, level=0.95)
-  
-  #4) Agregar los límires supeior e inferior del intervarlo a la base 
-  ci_95_man[contador_fila,3] <- ci_se_edad$upper
-  ci_95_man[contador_fila,4] <- ci_se_edad$lower
-  
-  #5) Incrementar en 1 el contador 
-  contador_fila <- contador_fila + 1
-  
-}
-
-ci_95_man <- ci_95_man %>% as.tibble()
-
-###Intervalos de confianza completos####
-ci_95 <- bind_rows(ci_95_female, ci_95_man)
-ci_95 <- ci_95 %>% 
-         mutate(female = as.factor(female))
-
-#Agregar los intervalos de confinaza a la base con las medias por edad y género: 
-average_salary_per_age_db_complete <- left_join(average_salary_per_age_db, ci_95, by = c("age", "female"))
-export(average_salary_per_age_db_complete, 'stores/predicted_age_wage_profile_by_gender_db.rds')
-
-predicted_age_wage_profile_by_gender_db <- readRDS("stores/predicted_age_wage_profile_by_gender_db.rds")
-
-
-
-
-
-
-
-
 
 
 
 #PLAYGROUND---------------------------------------------------------------------------------------------------------
 
-
-
-#Una sola iteración 
-
-#Sacar el intervalo de confianza para un solo año y género 
-db_sin_outliers_short <- db_sin_outliers %>% 
-                         select(age, female, ln_sal_predicted) %>%
-                         filter(age == 18 & female == 1)
-
-se_edad_18 <- do(100)*mean(~ln_sal_predicted, data=mosaic::resample(db_sin_outliers_short))
-
-se_edad_18<- se_edad_18 %>%
-              summarize(std_err_sleep = sd(mean))
-
-ci_se_edad_18 <- confint(se_edad_18, level=0.95)
-
-upper <- ci_se_edad_18$upper
-lower <- ci_se_edad_18$lower
-
-
-
-#Esctructura para guardar datos: 
-
-average_salary_per_age_db_female <- average_salary_per_age_db %>%
-                                    filter(female == 1)
-
-p_df<- data.frame(age = 1:63, upper = NA, lower = NA)
-
-#Agregar elementos al df
-ci_95_female[1,2] <- upper
-
-
-
-#Prueba loop: 
-
-
-ci_95_female <- data.frame(age = 18:61, std_err = NA ,upper = NA, lower = NA)
-contador_fila <- 1
-
-for (edad in 18:19) {
-  
-  #1) Hacer una base de datos que solo tengas los valores de un año 
-  db_edad <- db_sin_outliers_short_female %>%
-    filter(age == edad)
-  
-  #2) Hacer bootstrap para la media del salario para el año
-  se_edad <- do(100)*mean(~ln_sal_predicted, data=mosaic::resample(db_edad))
-  
-  #3) Calcular el intervalo de confianza al 95%
-  ci_se_edad <- confint(se_edad, level=0.95)
-  
-  #4) Agregar los límires supeior e inferior del intervarlo a la base 
-  ci_95_female[contador_fila,3] <- ci_se_edad$upper
-  ci_95_female[contador_fila,4] <- ci_se_edad$lower
-  
-  #5) Incrementar en 1 el contador 
-  contador_fila <- contador_fila + 1
-  
-}
 
 
 
