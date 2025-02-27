@@ -235,6 +235,9 @@ ggplot(df_residuos, aes(x = Errores)) +
 
 ##### Encontrar outliers con cuartiles
 
+training$residuos <- NA
+training$residuos[as.numeric(rownames(training))] <- residuals(modelo6a)
+
 Q1 <- quantile(training$residuos, 0.25)
 Q3 <- quantile(training$residuos, 0.75)
 IQR <- Q3 - Q1  
@@ -242,10 +245,81 @@ IQR <- Q3 - Q1
 limite_inferior <- Q1 - 1.5 * IQR
 limite_superior <- Q3 + 1.5 * IQR
 
-training$residuos <- NA
-training$residuos[as.numeric(rownames(training))] <- residuals(modelo6a)
-
 db_outliers <- training %>%
   filter(residuos < limite_inferior | residuos > limite_superior)
 
+##### Revisamos si los outliers tienen valores atípicos en las variables independientes
+
+var_cont <- c( "age", "exp_pot", "totalHoursWorked", 
+               "subs_alimentacion", "subs_transporte", "subs_familiar", 
+               "subs_educ", "prima_servicios", "prima_navidad", 
+               "prima_vacaciones","viaticos_bonif", "bonif_anuales")   
+
+
+var_categ <- c("female", "parentesco_jefe", "nivel_educ", "sizeFirm", 
+               "formal", "oficio", "estrato1")
+
+##### Para la base completa, categoricas
+for (variable in var_categ) {
+  
+  plot <- ggplot(db, aes_string(x = variable)) +
+    geom_bar(color = "#000000", fill = "#0099F8") +
+    ggtitle(paste("Frecuencia de", as.character(variable))) +
+    theme_classic() +
+    theme(plot.title = element_text(size = 18),
+          axis.text.x = element_text(angle = 45, hjust = 1))  # Rotación para mejor visibilidad
+  
+  print(plot)
+}
+
+##### Para los outliers, categóricas
+for (variable in var_categ) {
+  
+  plot <- ggplot(db_outliers, aes_string(x = variable)) +
+    geom_bar(color = "#000000", fill = "#0099F8") +
+    ggtitle(paste("Frecuencia de", as.character(variable))) +
+    theme_classic() +
+    theme(plot.title = element_text(size = 18),
+          axis.text.x = element_text(angle = 45, hjust = 1))  # Rotación para mejor visibilidad
+  
+  print(plot)
+}
+
+##### Para la base completa, continuas
+for (variable in var_cont) {
+  
+  plot <- ggplot(db, aes_string(variable)) +
+    geom_histogram(color = "#000000", fill = "#0099F8") +
+    geom_vline(xintercept = median(db_outliers[[variable]], na.rm = TRUE), linetype = "dashed", color = "red") +
+    geom_vline(xintercept = mean(db_outliers[[variable]], na.rm = TRUE), linetype = "dashed", color = "blue") +  
+    ggtitle(paste("Distribución", as.character(variable), sep = " ")) +
+    theme_classic() +
+    theme(plot.title = element_text(size = 18))
+  
+  print(plot)
+  
+}
+
+##### Para los outliers, continuas
+for (variable in var_cont) {
+  
+  plot <- ggplot(db_outliers, aes_string(variable)) +
+    geom_histogram(color = "#000000", fill = "#0099F8") +
+    geom_vline(xintercept = median(db_outliers[[variable]], na.rm = TRUE), linetype = "dashed", color = "red") +
+    geom_vline(xintercept = mean(db_outliers[[variable]], na.rm = TRUE), linetype = "dashed", color = "blue") +  
+    ggtitle(paste("Distribución", as.character(variable), sep = " ")) +
+    theme_classic() +
+    theme(plot.title = element_text(size = 18))
+  
+  print(plot)
+  
+}
+
+##### La variable de formalidad tiene una distribución diferente
+
+summary(db$formal)
+summary(db_outliers$formal)
+
 ### d)
+
+
