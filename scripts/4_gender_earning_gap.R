@@ -380,6 +380,16 @@ ci_95 <- ci_95 %>%
 
 #Agregar los intervalos de confinaza a la base con las medias por edad y género: 
 average_salary_per_age_db_complete <- left_join(average_salary_per_age_db, ci_95, by = c("age", "female"))
+export(average_salary_per_age_db_complete, 'stores/predicted_age_wage_profile_by_gender_db.rds')
+
+predicted_age_wage_profile_by_gender_db <- readRDS("stores/predicted_age_wage_profile_by_gender_db.rds")
+
+
+
+
+
+
+
 
 
 
