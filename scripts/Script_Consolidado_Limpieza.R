@@ -93,7 +93,8 @@ db_limpia <- db_limpia %>%
     p6600 = ifelse(is.na(p6600) | p6600 == 9, as.numeric(calcular_moda(p6600)), p6600),
     p6610 = ifelse(is.na(p6610) | p6610 == 9, as.numeric(calcular_moda(p6610)), p6610),
     p6620 = ifelse(is.na(p6620) | p6620 == 9, as.numeric(calcular_moda(p6620)), p6620),
-    p6090 = ifelse(is.na(p6090) | p6090 == 9, as.numeric(calcular_moda(p6090)), p6090)
+    p6090 = ifelse(is.na(p6090) | p6090 == 9, as.numeric(calcular_moda(p6090)), p6090),
+    p6210 = ifelse(is.na(p6210) | p6210 == 9, as.numeric(calcular_moda(p6210)), p6210)
   ) %>%
   ungroup()
 
@@ -133,12 +134,19 @@ for (var in vars) {
                                 no = .data[[var]]))
 }
 
-#### Para no tener problemas con las variables de entrenamiento y testeo, eliminamos las observaciones cuyos valores agrupados por oficio sean menores que cero
+#### Para no tener problemas con las variables de entrenamiento y testeo, eliminamos las observaciones cuyos valores agrupados son menores a 5
 db_limpia <- db_limpia %>%
   group_by(oficio) %>%
   filter(n() >= 5) %>%
   ungroup()
 
+db_limpia <- db_limpia %>%
+  group_by(p6050) %>%
+  filter(n() > 3) %>%
+  ungroup()
+
+db_limpia <- db_limpia %>% 
+  filter(p6210s1<99)
 #Borramos el las observaciones influyentes en la relación edad/salario
 
 modelo0 <- lm(y_ingLab_m_ha ~ age + I(age^2), data = db_limpia)
