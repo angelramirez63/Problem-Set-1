@@ -322,4 +322,63 @@ summary(db_outliers$formal)
 
 ### d)
 
+#### Modelo con mejor desempeño
+full_model6 <- lm(form_6,
+                 data = db )
+
+X<- model.matrix(full_model6)
+y <- model.response(model.frame(full_model6))
+
+beta_hat <- full_model6$coefficients
+
+## Calculate the inverse of  (X'X), call it G_inv
+G_inv<- solve(t(X)%*%X)
+
+## and 1/1-hi
+vec<- 1/(1-hatvalues(full_model6))
+
+N <- nrow(X)  # Number of observations
+LOO <- numeric(N)  # To store the errors
+
+# Loop over each observation
+for (i in 1:N) {
+  # get the new beta
+  new_beta<- beta_hat  - vec[i] * G_inv %*% as.vector(X[i, ]) * full_model6$residuals[i]
+  ## get the new error
+  new_error<- (y[i]- (X[i, ] %*% new_beta))^2
+  LOO[i]<-  new_error
+}
+
+looCV_error6 <- mean(LOO)
+sqrt(looCV_error6)
+
+#### Segundo modelo con mejor desempeño
+full_model7 <- lm(form_7,
+                  data = db )
+
+X<- model.matrix(full_model7)
+y <- model.response(model.frame(full_model7))
+
+beta_hat <- full_model7$coefficients
+
+## Calculate the inverse of  (X'X), call it G_inv
+G_inv<- solve(t(X)%*%X)
+
+## and 1/1-hi
+vec<- 1/(1-hatvalues(full_model7))
+
+N <- nrow(X)  # Number of observations
+LOO <- numeric(N)  # To store the errors
+
+# Loop over each observation
+for (i in 1:N) {
+  # get the new beta
+  new_beta<- beta_hat  - vec[i] * G_inv %*% as.vector(X[i, ]) * full_model7$residuals[i]
+  ## get the new error
+  new_error<- (y[i]- (X[i, ] %*% new_beta))^2
+  LOO[i]<-  new_error
+}
+
+looCV_error7 <- mean(LOO)
+sqrt(looCV_error7)
 
