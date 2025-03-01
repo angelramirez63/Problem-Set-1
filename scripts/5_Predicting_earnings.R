@@ -416,8 +416,4 @@ scores<- data.frame( Model= c(6, 7),
                      RMSE_loocv= c(score6b, score7b)
 )
 
-stargazer(scores[, c("Modelo", "RMSE")], type = "latex", title = "Resultados de Modelos",
-          summary = FALSE, digits = 4, out = "tabla_modelos.tex",
-          omit.summary.stat = c("n"))
-
-
+stargazer(scores, type = "latex", summary = FALSE, rownames = FALSE)
