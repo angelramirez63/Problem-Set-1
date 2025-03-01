@@ -14,7 +14,6 @@ p_load(tidyverse #tidy up data
        ,here #make commons paths to ease co working 
        ,skimr #summary statistics 
        ,boot #bootstrapping 
-       ,mosaic # also for bootstrapping
        ,rio #export data 
        )
 
@@ -39,87 +38,17 @@ db <- db %>%
       mutate(female = as.numeric(female)) %>%
       mutate(female = ifelse(female == 2, 1, 0))
 
-##1.2) Visualizar variable salario nominal por hora####
-
-#Función de densidad de la variable ingreso salarial por hora: 
-#La distribución tiene una cola izquierda pesada y una larga cola derecha 
-density_plot_ln_sal <- ggplot(db, aes(x = db$ln_sal)) +
-                              geom_density(fill = "blue", alpha = .2) + 
-                              geom_line(stat = "density") + 
-                              geom_vline(xintercept = median(db$ln_sal, na.rm = TRUE), linetype = "dashed", color = "red") +
-                              geom_vline(xintercept = mean(db$ln_sal, na.rm = TRUE), linetype = "dashed", color = "gray") + 
-                              ggtitle("Densidad ingreso salarial por horas")
-
-
-##1.3) Outliers####
-#En ambos casos hay bastantes outliers. Estos podrían ser parte del procesos de generar de datos 
-#Teniendo en cuenta la desigualdad que hay en Colombia, pero no quiero hacerle overfitting a esos datos extremos
-
-#Agrupados por estrato: 
-box_plot_y_ingLab_m_ha<- ggplot(db , mapping = aes(as.factor(estrato1),  ln_sal)) + 
-                         geom_boxplot() + 
-                         ggtitle("Box plot salarial por horas por estrato")
-  
-#Sin agrupar: 
-box_plot_y_ingLab_m_ha_no_group<- ggplot(db , mapping = aes(ln_sal)) + 
-  geom_boxplot() + 
-  ggtitle("Box plot salarial")
 
 
 
-#Regla de la desviación estándar:
-low <- mean(db$ln_sal) - 2* sd(db$ln_sal)
-up <- mean(db$ln_sal) + 2* sd(db$ln_sal)
+#2) Estimar el primero modelo sin controles  -----------------------------------
 
 
-
-density_plot_sigma_rule <-  ggplot(db, aes(x = db$ln_sal)) +
-                            geom_density(fill = "blue", alpha = .2) + 
-                            geom_line(stat = "density") + 
-                            geom_vline(xintercept = low, linetype = "dashed", color = "red") +
-                            geom_vline(xintercept = up, linetype = "dashed", color = "gray") + 
-                            ggtitle("Densidad ingreso salarial por horas")
-
-
-##1.4) Caracterízar outliers####
-
-#Guardar outliers en la base de datos: 
-#i) Son 613 observaciones que corresponden al 6,2% de las observaciones
-db_outliers <- db %>% 
-               filter(y_ingLab_m_ha < low | y_ingLab_m_ha > up)
-
-#ii) ingreso salarial por hora: son personas con un ingreso salarial mínimo de 23917 es decir que están en la cota superior 
-# de la regla de las dos desviaciones estándar 
-min(db_outliers$y_total_m_ha)
-
-#iii) Características outliers 
-summary(db_outliers)
-#Seguridad social: son 610 con seguridad social -> son formales 
-
-#Educación: Superior o universitaria para 606
-
-#Tamaño de la empresa y cuenta propia: son empleados de grandes empresas
-
-#Género: el grupo esta balanceado entre mujeres y hombres
-
-#Edad: La mayoría tienen entre 35 y 51 años con un promedio de 42
-
-#Conclusión: no es aleatorio que las personas esten a dos desviaciones estándar de la media
-
-
-
-#2) Estimar el primero modelo sin y con controles ------------------------------
-
-#Nota: por ahora voy a estimar el modelo con los outliers 
-
-                      
 modelo4a <- lm(ln_sal ~ female, data = db)
 stargazer(modelo4a, type = "text", star.cutoffs = NA, notes.append = FALSE)
 
 
 #3) Estimar el segundo modelo con controles y FWL ------------------------------
-
-#Literatura para pensar en los controles: https://pubs.aeaweb.org/doi/pdfplus/10.1257/jel.20160995 
 #La variable de interés es female
 
 ##3.1) Modelo####
@@ -291,6 +220,7 @@ salary_plot_2 <-ggplot(data = average_salary_per_age_db, mapping = aes( x = age 
                 scale_color_manual(labels = c("Hombres", "Mujeres"), values = c("coral2", "deepskyblue")) + 
                 theme_minimal()
 
+ggsave("views/dinamica_promedio_salario_por_hora_con_la_edad.png")
 
 salary_plot_3 <-ggplot(data = average_salary_per_age_db, mapping = aes( x = age , y = mean_salary_per_hour, group = female, color = female)) +
                   geom_line() +
@@ -300,16 +230,81 @@ salary_plot_3 <-ggplot(data = average_salary_per_age_db, mapping = aes( x = age 
                   scale_color_manual(labels = c("Hombres", "Mujeres"), values = c("coral2", "deepskyblue")) + 
                   theme_minimal()
 
-
-
-
-#PLAYGROUND---------------------------------------------------------------------------------------------------------
-
+#5) Calcular edades picos por género:#### 
 
 
 
 
+  
+#Anexo visualizar outliers------------------------------------------------------
 
+
+##A.1) Visualizar variable salario nominal por hora####
+
+#Función de densidad de la variable ingreso salarial por hora: 
+#La distribución tiene una cola izquierda pesada y una larga cola derecha 
+density_plot_ln_sal <- ggplot(db, aes(x = db$ln_sal)) +
+  geom_density(fill = "blue", alpha = .2) + 
+  geom_line(stat = "density") + 
+  geom_vline(xintercept = median(db$ln_sal, na.rm = TRUE), linetype = "dashed", color = "red") +
+  geom_vline(xintercept = mean(db$ln_sal, na.rm = TRUE), linetype = "dashed", color = "gray") + 
+  ggtitle("Densidad ingreso salarial por horas")
+
+
+##A.2) Outliers####
+#En ambos casos hay bastantes outliers. Estos podrían ser parte del procesos de generar de datos 
+#Teniendo en cuenta la desigualdad que hay en Colombia, pero no quiero hacerle overfitting a esos datos extremos
+
+#Agrupados por estrato: 
+box_plot_y_ingLab_m_ha<- ggplot(db , mapping = aes(as.factor(estrato1),  ln_sal)) + 
+  geom_boxplot() + 
+  ggtitle("Box plot salarial por horas por estrato")
+
+#Sin agrupar: 
+box_plot_y_ingLab_m_ha_no_group<- ggplot(db , mapping = aes(ln_sal)) + 
+  geom_boxplot() + 
+  ggtitle("Box plot salarial")
+
+
+
+#Regla de la desviación estándar:
+low <- mean(db$ln_sal) - 2* sd(db$ln_sal)
+up <- mean(db$ln_sal) + 2* sd(db$ln_sal)
+
+
+
+density_plot_sigma_rule <-  ggplot(db, aes(x = db$ln_sal)) +
+  geom_density(fill = "blue", alpha = .2) + 
+  geom_line(stat = "density") + 
+  geom_vline(xintercept = low, linetype = "dashed", color = "red") +
+  geom_vline(xintercept = up, linetype = "dashed", color = "gray") + 
+  ggtitle("Densidad ingreso salarial por horas")
+
+
+##A.3) Caracterízar outliers####
+
+#Guardar outliers en la base de datos: 
+#i) Son 613 observaciones que corresponden al 6,2% de las observaciones
+db_outliers <- db %>% 
+  filter(y_ingLab_m_ha < low | y_ingLab_m_ha > up)
+
+#ii) ingreso salarial por hora: son personas con un ingreso salarial mínimo de 23917 es decir que están en la cota superior 
+# de la regla de las dos desviaciones estándar 
+min(db_outliers$y_total_m_ha)
+
+#iii) Características outliers 
+summary(db_outliers)
+#Seguridad social: son 610 con seguridad social -> son formales 
+
+#Educación: Superior o universitaria para 606
+
+#Tamaño de la empresa y cuenta propia: son empleados de grandes empresas
+
+#Género: el grupo esta balanceado entre mujeres y hombres
+
+#Edad: La mayoría tienen entre 35 y 51 años con un promedio de 42
+
+#Conclusión: no es aleatorio que las personas esten a dos desviaciones estándar de la media
 
 
 
