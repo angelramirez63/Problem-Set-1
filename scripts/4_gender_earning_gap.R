@@ -143,16 +143,17 @@ female_boostrap_se_R10000 <- readRDS("stores/female_boostrap_se_R10000.rds")
 #Guardar en un objecto los erroes estándar de los modelos: 
 se_modelo4a <- summary(modelo4a)$coefficients[, "Std. Error"]
 se_modelo4b <- summary(modelo4b)$coefficients[, "Std. Error"]
-se_modelo4b_fwl <- c(NA, 0.01526995)
+se_modelo4b_fwl <- summary(modelo_4b_fwl)$coefficients[, "Std. Error"]
+se_modelo4b_fwl_boot <- c(NA, 0.01526995) #Este es el resultado de female_boostrap_se_R_10000
 
 #Incluirlos en la tabla y darle formato a la tabla: 
-resultados_modelos <- stargazer(modelo4a ,modelo4b, modelo_4b_fwl, 
+resultados_modelos <- stargazer(modelo4a ,modelo4b, modelo_4b_fwl, modelo_4b_fwl,
                       type = "text", 
                       omit = c("Constant","oficio", "nivel_educ", "age", "sizeFirm", "formal", "horas_ocup_prin", "estrato1"), # Nos mostrar controles
                       star.cutoffs = NA, # No mostrar asteriscos para la significancia 
                       notes.append = FALSE, # No incluir notas 
-                      se = list(se_modelo4a, se_modelo4b, se_modelo4b_fwl), #Incluir errores estándar especificados por nosotros
-                      column.labels = c("Sin condicionar", "Condicionada", "Condicionada FWL"),  #Ponerle nombres a los modelos
+                      se = list(se_modelo4a, se_modelo4b, se_modelo4b_fwl, se_modelo4b_fwl_boot), #Incluir errores estándar especificados por nosotros
+                      column.labels = c("Sin condicionar", "Condicionada", "FWL", "FWL Boot SE"),  #Ponerle nombres a los modelos
                       dep.var.labels.include = F, 
                       dep.var.caption = "", # Remover titulo que dice "Dependent variable:"
                       title =  "Brecha salarial por género", #Ponerle título a la tabla
