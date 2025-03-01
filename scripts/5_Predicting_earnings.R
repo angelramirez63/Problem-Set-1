@@ -120,8 +120,7 @@ score4a
 #### Quinto modelo
 
 form_5 <- ln_sal ~ female:parentesco_jefe + nivel_educ:poly(age,4,raw=TRUE) + 
-  sizeFirm + formal + oficio + estrato1 + 
-  poly(exp_pot,4,raw=TRUE) + totalHoursWorked
+  sizeFirm:formal + oficio + estrato1 + poly(exp_pot,4,raw=TRUE) + totalHoursWorked
 
 modelo5a <- lm(form_5, data = training)
 
@@ -171,15 +170,14 @@ score7a
 
 form_8 <- ln_sal ~ female:parentesco_jefe + nivel_educ:poly(age,8,raw=TRUE) + 
   sizeFirm:formal + oficio + estrato1 + 
-  poly(exp_pot,8,raw=TRUE):poly(totalHoursWorked,8,raw=TRUE) + ing_primas + ing_bonif + ing_lab_secundario + 
-  ing_arriendos + ing_pension + ing_pension_alimenticia + 
-  ing_otros_hogares + ing_otros_hogares_extranjero + 
-  ing_ayudas_instituciones + ing_intereses_dividendos + 
-  ing_cesantias + ing_otras_fuentes + val_alimentos_especie + 
-  val_vivienda_especie + val_transporte_especie + val_otros_especie +
-  subs_alimentacion + subs_transporte + subs_familiar + subs_educ +
-  prima_servicios + prima_navidad + prima_vacaciones + 
-  viaticos_bonif + bonif_anuales
+  poly(exp_pot,8,raw=TRUE):poly(totalHoursWorked,8,raw=TRUE) + ing_primas + 
+  ing_bonif + ing_lab_secundario + ing_arriendos + ing_pension + 
+  ing_pension_alimenticia + ing_otros_hogares + ing_otros_hogares_extranjero + 
+  ing_ayudas_instituciones + ing_intereses_dividendos + ing_cesantias + 
+  ing_otras_fuentes + val_alimentos_especie + val_vivienda_especie + 
+  val_transporte_especie + val_otros_especie + subs_alimentacion + 
+  subs_transporte + subs_familiar + subs_educ + prima_servicios + 
+  prima_navidad + prima_vacaciones + viaticos_bonif + bonif_anuales
 
 modelo8a <- lm(form_8, data = training)
 
@@ -352,6 +350,8 @@ for (i in 1:N) {
 looCV_error6 <- mean(LOO)
 sqrt(looCV_error6)
 
+score6b <- sqrt(looCV_error6)
+
 #### Segundo modelo con mejor desempeño
 full_model7 <- lm(form_7,
                   data = db )
@@ -381,4 +381,43 @@ for (i in 1:N) {
 
 looCV_error7 <- mean(LOO)
 sqrt(looCV_error7)
+
+score7b <- sqrt(looCV_error7)
+
+##### Realización con comandos
+
+ctrl <- trainControl(
+  method = "LOOCV") ## input the method Leave One Out Cross Validation
+
+##### Modelo 6
+
+ctrl$verboseIter <- TRUE  # Enable progress printing
+modelo6b <- train(form_6,
+                  data = db,
+                  method = 'lm', 
+                  trControl = ctrl)
+
+score6b<-RMSE(modelo6b$pred$pred, db$ln_sal)
+
+##### Modelo 7
+
+ctrl$verboseIter <- TRUE  # Enable progress printing
+modelo7b <- train(form_6,
+                  data = db,
+                  method = 'lm', 
+                  trControl = ctrl)
+
+score7b<-RMSE(modelo7b$pred$pred, db$ln_sal)
+
+##### Tabla de los errores de Validation set y LOOCV
+
+scores<- data.frame( Model= c(6, 7),
+                     RMSE_vsa= c(score6a, score7a), 
+                     RMSE_loocv= c(score6b, score7b)
+)
+
+stargazer(scores[, c("Modelo", "RMSE")], type = "latex", title = "Resultados de Modelos",
+          summary = FALSE, digits = 4, out = "tabla_modelos.tex",
+          omit.summary.stat = c("n"))
+
 
