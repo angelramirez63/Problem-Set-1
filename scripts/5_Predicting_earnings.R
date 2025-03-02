@@ -94,7 +94,7 @@ score2a
 
 #### Tercer modelo
 
-form_3 <- ln_sal ~ female + nivel_educ + age + sizeFirm + formal + 
+form_3 <- ln_sal ~ female + nivel_educ + age + I(age^2) + sizeFirm + formal + 
   oficio + estrato1
 
 modelo3a <- lm(form_3, data = training)
@@ -219,32 +219,38 @@ ggplot(scores, aes(x = Modelo, y = RMSE, col = Aproximación)) +
 #### Outliers de la muestra
 
 ##### Distribución del modelo con mejor predicción
-residuos <- residuals(modelo6a)
 
-df_residuos <- data.frame(Errores = residuos)
+predictions <- predict(modelo6a, testing)
 
-ggplot(df_residuos, aes(x = Errores)) +
-  geom_histogram(aes(y = ..density..), bins = 30, fill = "lightblue", color = "black", alpha = 0.7) +  
-  theme_bw() +
-  ggtitle("Distribución de los errores del modelo 6") +
-  xlab("Errores") +
-  ylab("Densidad") +
-  theme(plot.title = element_text(hjust = 0.5))
+testing$errores <- testing$ln_sal - predictions
+
+ggplot(testing, aes(x = errores)) +
+  geom_histogram(binwidth = 0.2, fill = "blue", color = "black", alpha = 0.7) +
+  geom_vline(xintercept = mean(testing$errores, na.rm = TRUE), linetype = "dashed", color = "red") +
+  theme_minimal()
 
 ##### Encontrar outliers con cuartiles
 
-training$residuos <- NA
-training$residuos[as.numeric(rownames(training))] <- residuals(modelo6a)
-
-Q1 <- quantile(training$residuos, 0.25)
-Q3 <- quantile(training$residuos, 0.75)
+Q1 <- quantile(testing$errores, 0.25)
+Q3 <- quantile(testing$errores, 0.75)
 IQR <- Q3 - Q1  
 
 limite_inferior <- Q1 - 1.5 * IQR
 limite_superior <- Q3 + 1.5 * IQR
 
-db_outliers <- training %>%
-  filter(residuos < limite_inferior | residuos > limite_superior)
+db_outliers <- testing %>%
+  filter(errores < limite_inferior | errores > limite_superior)
+
+##### Encontrar outliers con desviaciones
+
+media_errores <- mean(testing$errores, na.rm = TRUE)
+sd_errores <- sd(testing$errores, na.rm = TRUE)
+
+limite_inferior <- media_errores - 3 * sd_errores
+limite_superior <- media_errores + 3 * sd_errores
+
+db_outliers <- testing %>%
+  filter(errores < limite_inferior | errores > limite_superior)
 
 ##### Revisamos si los outliers tienen valores atípicos en las variables independientes
 
@@ -315,74 +321,9 @@ for (variable in var_cont) {
 
 ##### La variable de formalidad tiene una distribución diferente
 
-summary(db$formal)
 summary(db_outliers$formal)
 
 ### d)
-
-#### Modelo con mejor desempeño
-full_model6 <- lm(form_6,
-                 data = db )
-
-X<- model.matrix(full_model6)
-y <- model.response(model.frame(full_model6))
-
-beta_hat <- full_model6$coefficients
-
-## Calculate the inverse of  (X'X), call it G_inv
-G_inv<- solve(t(X)%*%X)
-
-## and 1/1-hi
-vec<- 1/(1-hatvalues(full_model6))
-
-N <- nrow(X)  # Number of observations
-LOO <- numeric(N)  # To store the errors
-
-# Loop over each observation
-for (i in 1:N) {
-  # get the new beta
-  new_beta<- beta_hat  - vec[i] * G_inv %*% as.vector(X[i, ]) * full_model6$residuals[i]
-  ## get the new error
-  new_error<- (y[i]- (X[i, ] %*% new_beta))^2
-  LOO[i]<-  new_error
-}
-
-looCV_error6 <- mean(LOO)
-sqrt(looCV_error6)
-
-score6b <- sqrt(looCV_error6)
-
-#### Segundo modelo con mejor desempeño
-full_model7 <- lm(form_7,
-                  data = db )
-
-X<- model.matrix(full_model7)
-y <- model.response(model.frame(full_model7))
-
-beta_hat <- full_model7$coefficients
-
-## Calculate the inverse of  (X'X), call it G_inv
-G_inv<- solve(t(X)%*%X)
-
-## and 1/1-hi
-vec<- 1/(1-hatvalues(full_model7))
-
-N <- nrow(X)  # Number of observations
-LOO <- numeric(N)  # To store the errors
-
-# Loop over each observation
-for (i in 1:N) {
-  # get the new beta
-  new_beta<- beta_hat  - vec[i] * G_inv %*% as.vector(X[i, ]) * full_model7$residuals[i]
-  ## get the new error
-  new_error<- (y[i]- (X[i, ] %*% new_beta))^2
-  LOO[i]<-  new_error
-}
-
-looCV_error7 <- mean(LOO)
-sqrt(looCV_error7)
-
-score7b <- sqrt(looCV_error7)
 
 ##### Realización con comandos
 
@@ -409,11 +350,133 @@ modelo7b <- train(form_6,
 
 score7b<-RMSE(modelo7b$pred$pred, db$ln_sal)
 
+##### Revisión adicional con k-fold
+
+ctrl <- trainControl(
+  method = "cv", ## Define the method for cross validation 
+  number = 10) ## the number of folds. 
+
+###### Modelo 6
+
+set.seed(69205)  
+
+modelo6c <- train(form_6,  ## define the functional form (i.e the variable to predict and the features)
+                  data = db,  # the data frame
+                  method = 'lm',  # the method
+                  trControl= ctrl)  # input our cross validation method. 
+
+modelo6c$resample
+
+score6c<- mean(modelo6c$resample$RMSE)
+
+###### Modelo 7
+
+set.seed(69205)  
+
+modelo7c <- train(form_7,  ## define the functional form (i.e the variable to predict and the features)
+                  data = db,  # the data frame
+                  method = 'lm',  # the method
+                  trControl= ctrl)  # input our cross validation method. 
+
+modelo7c$resample
+
+score7c<- mean(modelo7c$resample$RMSE)
+
+###### Modelo 8
+
+set.seed(69205)  
+
+modelo8c <- train(form_8,  ## define the functional form (i.e the variable to predict and the features)
+                  data = db,  # the data frame
+                  method = 'lm',  # the method
+                  trControl= ctrl)  # input our cross validation method. 
+
+modelo8c$resample
+
+score8c<- mean(modelo8c$resample$RMSE)
+
+score8b <- NA
+
 ##### Tabla de los errores de Validation set y LOOCV
 
-scores<- data.frame( Model= c(6, 7),
-                     RMSE_vsa= c(score6a, score7a), 
-                     RMSE_loocv= c(score6b, score7b)
+scores<- data.frame( Model= c(6, 7, 8),
+                     RMSE_vsa= c(score6a, score7a, score8a), 
+                     RMSE_loocv= c(score6b, score7b, score8b),
+                     RMSE_kfold= c(score6c, score7c, score8c)
 )
 
 stargazer(scores, type = "latex", summary = FALSE, rownames = FALSE)
+
+#### Estadístico de influencia
+
+##### Modelo 6
+
+full_model6 <- lm(form_6,
+                  data = db )
+
+X<- model.matrix(full_model6)
+
+vec6<- 1/(1-hatvalues(full_model6))
+
+N <- nrow(X)
+influencia <- numeric(N) 
+
+for (i in 1:N) {
+  influencia[i] <- vec6[i] * full_model6$residuals[i]
+}
+
+influencia6 <- mean(influencia)
+
+##### Modelo 7
+
+full_model7 <- lm(form_7,
+                  data = db )
+
+X<- model.matrix(full_model7)
+
+vec7<- 1/(1-hatvalues(full_model7))
+
+N <- nrow(X)
+influencia <- numeric(N) 
+
+for (i in 1:N) {
+  influencia[i] <- vec7[i] * full_model7$residuals[i]
+}
+
+influencia7 <- mean(influencia)
+
+##### Modelo 8
+
+full_model8 <- lm(form_8,
+                  data = db )
+
+X<- model.matrix(full_model8)
+
+vec8<- 1/(1-hatvalues(full_model8))
+
+N <- nrow(X)
+influencia <- numeric(N) 
+
+for (i in 1:N) {
+  influencia[i] <- vec8[i] * full_model8$residuals[i]
+}
+
+influencia8 <- mean(influencia)
+
+##### Modelo 2
+
+full_model2 <- lm(form_2,
+                  data = db )
+
+X<- model.matrix(full_model2)
+
+vec2<- 1/(1-hatvalues(full_model2))
+
+N <- nrow(X)
+influencia <- numeric(N) 
+
+for (i in 1:N) {
+  influencia[i] <- vec2[i] * full_model2$residuals[i]
+}
+
+influencia2 <- mean(influencia)
