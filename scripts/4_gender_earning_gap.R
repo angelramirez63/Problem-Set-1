@@ -52,7 +52,7 @@ stargazer(modelo4a, type = "text", star.cutoffs = NA, notes.append = FALSE)
 #La variable de interés es female
 
 ##3.1) Modelo####
-modelo4b <- lm(ln_sal ~ female + nivel_educ + age + sizeFirm + formal + oficio + estrato1 ,data = db)
+modelo4b <- lm(ln_sal ~ female + nivel_educ + age + I(age^2) + sizeFirm + formal + oficio + estrato1 ,data = db)
 stargazer(modelo4a, modelo4b, 
           type = "text", 
           omit =  c("Constant", "oficio", "nivel_educ", "age", "sizeFirm", "formal", "estrato1"), 
@@ -63,8 +63,8 @@ stargazer(modelo4a, modelo4b,
 
 #(i) Regresión auxiliar de female en los controles: representa la parte de female que no esta explicada por los controles
 #(ii) Regresión auxiliar de ln_sal en los controles: representa la parte de ln_sal que no esta explicada por los controles
-db_fwl <- db %>% mutate(female_resid = lm(female ~ nivel_educ + age + sizeFirm + formal + oficio + estrato1 ,data = db)$residuals) %>%
-                 mutate(ln_sal_resid = lm(ln_sal ~ nivel_educ + age + sizeFirm + formal + oficio + estrato1 ,data = db)$residuals) 
+db_fwl <- db %>% mutate(female_resid = lm(female ~ nivel_educ + age + I(age^2) + sizeFirm + formal + oficio + estrato1 ,data = db)$residuals) %>%
+                 mutate(ln_sal_resid = lm(ln_sal ~ nivel_educ + age + I(age^2) + sizeFirm + formal + oficio + estrato1 ,data = db)$residuals) 
 
 
 #(iii) Dejar en la base solo las variables de interés 
@@ -110,9 +110,9 @@ partialling_out <- function (data, index) {
   
   db_resid <- data.frame(row.names = 1:nrow(data))
   
-  db_resid$x_resid <- lm(female ~ nivel_educ + age + sizeFirm + formal + oficio + estrato1, data = data, subset = index )$residuals
+  db_resid$x_resid <- lm(female ~ nivel_educ + age + I(age^2) + sizeFirm + formal + oficio + estrato1, data = data, subset = index )$residuals
   
-  db_resid$y_resid <- lm(ln_sal ~ nivel_educ + age + sizeFirm + formal + oficio + estrato1, data = data, subset = index)$residuals
+  db_resid$y_resid <- lm(ln_sal ~ nivel_educ + age + I(age^2) + sizeFirm + formal + oficio + estrato1, data = data, subset = index)$residuals
   
   coef(lm( y_resid ~ x_resid, data = db_resid, subset = index))[2]
 }
@@ -144,7 +144,7 @@ female_boostrap_se_R10000 <- readRDS("stores/female_boostrap_se_R10000.rds")
 se_modelo4a <- summary(modelo4a)$coefficients[, "Std. Error"]
 se_modelo4b <- summary(modelo4b)$coefficients[, "Std. Error"]
 se_modelo4b_fwl <- summary(modelo_4b_fwl)$coefficients[, "Std. Error"]
-se_modelo4b_fwl_boot <- c(NA, 0.01526995) #Este es el resultado de female_boostrap_se_R_10000
+se_modelo4b_fwl_boot <- c(NA, sd(female_boostrap_se_R10000$t)) #Este es el resultado de female_boostrap_se_R_10000
 
 #Incluirlos en la tabla y darle formato a la tabla: 
 resultados_modelos <- stargazer(modelo4a ,modelo4b, modelo_4b_fwl, modelo_4b_fwl,
@@ -158,7 +158,7 @@ resultados_modelos <- stargazer(modelo4a ,modelo4b, modelo_4b_fwl, modelo_4b_fwl
                       dep.var.caption = "", # Remover titulo que dice "Dependent variable:"
                       title =  "Brecha salarial por género", #Ponerle título a la tabla
                       covariate.labels = c("Mujer"), # Renombrar covariables 
-                      keep.stat = c("n", "rsq", "ser")) # Conservar las estadísticas de interés 
+                      keep.stat = c("n", "adj.rsq", "ser")) # Conservar las estadísticas de interés 
 
   
 
@@ -232,8 +232,7 @@ salary_plot_3 <-ggplot(data = average_salary_per_age_db, mapping = aes( x = age 
                   theme_minimal()
 
 #5) Calcular edades picos por género:#### 
-
-
+femal
 
 ##5.1) Función que encuentra el pico#### 
 calcular_edad_pico_mujeres <- function(data, index){
@@ -242,7 +241,7 @@ calcular_edad_pico_mujeres <- function(data, index){
   data_base <- data[index,]
   
   #ii)Usar la muestra boot para predecir los valores de ingreso
-  data_base$ln_sal_predicted <- predict(lm(ln_sal ~ female + nivel_educ + age + sizeFirm + formal + oficio + estrato1 ,data = data_base, subset = index))
+  data_base$ln_sal_predicted <- predict(lm(ln_sal ~ female + nivel_educ + age + I(age^2) + sizeFirm + formal + oficio + estrato1 ,data = data_base, subset = index))
   
   #ii)Remover outliers de la base y hacer el promedio salarial por edad para las mujeres: 
   low <- mean(data_base$ln_sal) - 2* sd(data_base$ln_sal)
@@ -268,8 +267,9 @@ calcular_edad_pico_mujeres <- function(data, index){
 
 ##5.2)Hacer bootstrapping para encontrar la incertidumbre del pico####
 pico_mujeres_bootstrap_se_R1000 <- boot(db, calcular_edad_pico_mujeres, R = 1000)
-confint(pico_mujeres_bootstrap_se_R1000$t, level = 0.95)
-  
+export(pico_mujeres_bootstrap_se_R1000, 'stores/pico_mujeres_bootstrap_se_R1000.rds')
+
+pico_mujeres_bootstrap_se_R1000 <- readRDS("stores/pico_mujeres_bootstrap_se_R1000.rds")  
 ##5.3) Ahora hacer el calculo para los hombres####
 
 #Función que encuentra el pico para los hombres: 
@@ -279,7 +279,7 @@ calcular_edad_pico_hombres <- function(data, index){
   data_base <- data[index,]
   
   #ii)Usar la muestra boot para predecir los valores de ingreso
-  data_base$ln_sal_predicted <- predict(lm(ln_sal ~ female + nivel_educ + age + sizeFirm + formal + oficio + estrato1 ,data = data_base, subset = index))
+  data_base$ln_sal_predicted <- predict(lm(ln_sal ~ female + nivel_educ + age + I(age^2) + sizeFirm + formal + oficio + estrato1 ,data = data_base, subset = index))
   
   #ii)Remover outliers de la base y hacer el promedio salarial por edad para las mujeres: 
   low <- mean(data_base$ln_sal) - 2* sd(data_base$ln_sal)
@@ -305,7 +305,10 @@ calcular_edad_pico_hombres <- function(data, index){
 
 #Hacer bootstrapping para encontrar la incertidumbre del pico
 pico_hombres_bootstrap_se_R1000 <- boot(db, calcular_edad_pico_hombres, R = 1000)
-confint(pico_hombres_bootstrap_se_R1000$t, level = 0.95)
+export(pico_hombres_bootstrap_se_R1000, 'stores/pico_hombres_bootstrap_se_R1000.rds')
+
+pico_hombres_bootstrap_se_R1000 <- readRDS("stores/pico_hombres_bootstrap_se_R1000.rds")  
+
 
 #Anexo visualizar outliers------------------------------------------------------
 
