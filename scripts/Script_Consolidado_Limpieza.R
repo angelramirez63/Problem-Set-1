@@ -44,8 +44,7 @@ export(datos_GEIH, 'stores/datos_GEIH.rds')
 #2.2. Limpieza de datos ---------------------------------------------------------
 
 rm(list = ls())
-db <- readRDS("stores/datos_GEIH.rds") %>% 
-  as_tibble()
+?h
 
 #i) la condicción para conservar la observación es:  age == edad_personas , ocu === dummy_si_la_persona esta ocupada
 
