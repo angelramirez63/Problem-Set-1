@@ -1,0 +1,14 @@
+\begin{table}[!htbp] \centering 
+  \caption{} 
+  \label{} 
+\begin{tabular}{@{\extracolsep{5pt}} cccc} 
+\\[-1.8ex]\hline 
+\hline \\[-1.8ex] 
+Model & RMSE\_vsa & RMSE\_loocv & RMSE\_kfold \\ 
+\hline \\[-1.8ex] 
+$6$ & $0.366$ & $0.366$ & $0.367$ \\ 
+$7$ & $0.393$ & $0.366$ & $0.372$ \\ 
+$8$ & $0.778$ & $-$ & $0.424$ \\ 
+\hline \\[-1.8ex] 
+\end{tabular} 
+\end{table} 
