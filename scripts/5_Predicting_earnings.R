@@ -2,7 +2,7 @@
 library(pacman)
 
 p_load(tidyverse, rvest, rebus, htmltools, rio, skimr,
-       visdat, margins, stargazer, here, VIM, caret, dplyr)
+       visdat, margins, stargazer, here, VIM, caret, dplyr, stats)
 
 rm(list = ls())
 
@@ -213,8 +213,7 @@ scores<- data.frame( Modelo= c(1, 2, 3, 4, 5, 6, 7, 8),
 ggplot(scores, aes(x = Modelo, y = RMSE, col = Aproximación)) + 
   geom_line(size = 0.5) +
   theme_bw() +
-  ggtitle("Desempeño de los modelos") +
-  theme(plot.title = element_text(hjust = 0.5)) 
+  theme(plot.title = element_text(hjust = 0.5), legend.position = "none")
 
 #### Outliers de la muestra
 
@@ -225,9 +224,15 @@ predictions <- predict(modelo6a, testing)
 testing$errores <- testing$ln_sal - predictions
 
 ggplot(testing, aes(x = errores)) +
-  geom_histogram(binwidth = 0.2, fill = "blue", color = "black", alpha = 0.7) +
-  geom_vline(xintercept = mean(testing$errores, na.rm = TRUE), linetype = "dashed", color = "red") +
+  geom_histogram(binwidth = 0.2, fill = "royalblue", color = "black", alpha = 0.7) +
+  geom_vline(xintercept = mean(testing$errores, na.rm = TRUE) + 3 * sd(testing$errores, na.rm = TRUE), 
+             linetype = "dashed", color = "darkgreen") +
+  geom_vline(xintercept = mean(testing$errores, na.rm = TRUE) - 3 * sd(testing$errores, na.rm = TRUE), 
+             linetype = "dashed", color = "darkgreen") +
+  xlab("Errores") +
+  ylab("Frecuencia") +
   theme_minimal()
+
 
 ##### Encontrar outliers con cuartiles
 
@@ -322,6 +327,12 @@ for (variable in var_cont) {
 ##### La variable de formalidad tiene una distribución diferente
 
 summary(db_outliers$formal)
+
+##### Encontrar con residuos studentizados
+
+training$residual_student <- rstudent(modelo6a) 
+
+b <- hatvalues(modelo6a)
 
 ### d)
 
