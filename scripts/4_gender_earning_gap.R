@@ -232,85 +232,66 @@ salary_plot_3 <-ggplot(data = average_salary_per_age_db, mapping = aes( x = age 
                   theme_minimal()
 
 #5) Calcular edades picos por género:#### 
-femal
 
-##5.1) Función que encuentra el pico#### 
-calcular_edad_pico_mujeres <- function(data, index){
+
+
+db<- db %>% mutate(age2=age^2)
+
+db_mujeres <- db %>% filter(female == 1) 
+db_hombres <- db %>% filter(female == 0) 
+
+edad_pico_fn<-function(data,index){
   
-  #i) Muestra boot: 
-  data_base <- data[index,]
   
-  #ii)Usar la muestra boot para predecir los valores de ingreso
-  data_base$ln_sal_predicted <- predict(lm(ln_sal ~ female + nivel_educ + age + I(age^2) + sizeFirm + formal + oficio + estrato1 ,data = data_base, subset = index))
+  f<-lm(ln_sal ~ age + age2 + female + nivel_educ + sizeFirm + formal + oficio + estrato1,data, subset = index)
   
-  #ii)Remover outliers de la base y hacer el promedio salarial por edad para las mujeres: 
-  low <- mean(data_base$ln_sal) - 2* sd(data_base$ln_sal)
-  up <- mean(data_base$ln_sal) + 2* sd(data_base$ln_sal)
   
-  data_base <- data_base %>% 
-               filter(female == 1) %>% 
-               filter( low < ln_sal & ln_sal < up) %>% 
-               group_by(age) %>%
-               summarise(mean_salary_per_hour = mean(ln_sal_predicted), contador = n())
-               
-  data_base <- data_base %>%
-               filter(contador > 24)
+  b1<-f$coefficients[2]
+  b2<-f$coefficients[3] 
   
-  #iii)Encontrar el pico de edad: 
-  data_base <- data_base %>%
-               arrange(desc(mean_salary_per_hour))
   
-  #iv)Pico 
-  pico <- as.numeric(data_base[1,1])
-  return(pico)
+  age_pico<--b1/(2*b2)
+   
+  
+  return(age_pico)
 }
 
-##5.2)Hacer bootstrapping para encontrar la incertidumbre del pico####
-pico_mujeres_bootstrap_se_R1000 <- boot(db, calcular_edad_pico_mujeres, R = 1000)
-export(pico_mujeres_bootstrap_se_R1000, 'stores/pico_mujeres_bootstrap_se_R1000.rds')
 
-pico_mujeres_bootstrap_se_R1000 <- readRDS("stores/pico_mujeres_bootstrap_se_R1000.rds")  
-##5.3) Ahora hacer el calculo para los hombres####
+edad_pico_mujeres <- boot(data=db_mujeres, edad_pico_fn,R=1000)
+edad_pico_hombres <- boot(data=db_hombres, edad_pico_fn,R=1000)
 
-#Función que encuentra el pico para los hombres: 
-calcular_edad_pico_hombres <- function(data, index){
-  
-  #i) Muestra boot: 
-  data_base <- data[index,]
-  
-  #ii)Usar la muestra boot para predecir los valores de ingreso
-  data_base$ln_sal_predicted <- predict(lm(ln_sal ~ female + nivel_educ + age + I(age^2) + sizeFirm + formal + oficio + estrato1 ,data = data_base, subset = index))
-  
-  #ii)Remover outliers de la base y hacer el promedio salarial por edad para las mujeres: 
-  low <- mean(data_base$ln_sal) - 2* sd(data_base$ln_sal)
-  up <- mean(data_base$ln_sal) + 2* sd(data_base$ln_sal)
-  
-  data_base <- data_base %>% 
-                filter(female == 0) %>% 
-                filter( low < ln_sal & ln_sal < up) %>% 
-                group_by(age) %>%
-                summarise(mean_salary_per_hour = mean(ln_sal_predicted), contador = n())
-  
-  data_base <- data_base %>%
-               filter(contador > 24)
-  
-  #iii)Encontrar el pico de edad: 
-  data_base <- data_base %>%
-                arrange(desc(mean_salary_per_hour))
-  
-  #iv)Pico 
-  pico <- as.numeric(data_base[1,1])
-  return(pico)
-}
 
-#Hacer bootstrapping para encontrar la incertidumbre del pico
-pico_hombres_bootstrap_se_R1000 <- boot(db, calcular_edad_pico_hombres, R = 1000)
-export(pico_hombres_bootstrap_se_R1000, 'stores/pico_hombres_bootstrap_se_R1000.rds')
-
-pico_hombres_bootstrap_se_R1000 <- readRDS("stores/pico_hombres_bootstrap_se_R1000.rds")  
 
 
 #Anexo visualizar outliers------------------------------------------------------
+
+
+db<- db %>% mutate(age2=age^2)
+
+db_mujeres <- db %>% filter(female == 1) 
+db_hombres <- db %>% filter(female == 0) 
+
+edad_pico_fn<-function(data,index){
+  
+  
+  f<-lm(ln_sal ~ age + age2 + female + nivel_educ + sizeFirm + formal + oficio + estrato1,data, subset = index)
+  
+  
+  b1<-f$coefficients[2]
+  b2<-f$coefficients[3] 
+  
+  
+  age_pico<--b1/(2*b2)
+  
+  
+  return(age_pico)
+}
+
+
+edad_pico_mujeres <- boot(data=db_mujeres, edad_pico_fn,R=1000)
+edad_pico_hombres <- boot(data=db_hombres, edad_pico_fn,R=1000)
+
+
 
 ##A.1) Visualizar variable salario nominal por hora####
 
@@ -380,7 +361,79 @@ summary(db_outliers)
 #Conclusión: no es aleatorio que las personas esten a dos desviaciones estándar de la media
 
 
+##A.4) Encontar picos deprecated####
 
+#5.1) Función que encuentra el pico
+calcular_edad_pico_mujeres <- function(data, index){
+  
+  #i) Muestra boot: 
+  data_base <- data[index,]
+  
+  #ii)Usar la muestra boot para predecir los valores de ingreso
+  data_base$ln_sal_predicted <- predict(lm(ln_sal ~ female + nivel_educ + age + I(age^2) + sizeFirm + formal + oficio + estrato1 ,data = data_base, subset = index))
+  
+  #ii)Remover outliers de la base y hacer el promedio salarial por edad para las mujeres: 
+  low <- mean(data_base$ln_sal) - 2* sd(data_base$ln_sal)
+  up <- mean(data_base$ln_sal) + 2* sd(data_base$ln_sal)
+  
+  data_base <- data_base %>% 
+    filter(female == 1) %>% 
+    filter( low < ln_sal & ln_sal < up) %>% 
+    group_by(age) %>%
+    summarise(mean_salary_per_hour = mean(ln_sal_predicted), contador = n())
+  
+  data_base <- data_base %>%
+    filter(contador > 24)
+  
+  #iii)Encontrar el pico de edad: 
+  data_base <- data_base %>%
+    arrange(desc(mean_salary_per_hour))
+  
+  #iv)Pico 
+  pico <- as.numeric(data_base[1,1])
+  return(pico)
+}
+
+#5.2)Hacer bootstrapping para encontrar la incertidumbre del pico
+pico_mujeres_bootstrap_se_R1000 <- boot(db, calcular_edad_pico_mujeres, R = 1000)
+
+
+pico_mujeres_bootstrap_se_R1000 <- readRDS("stores/pico_mujeres_bootstrap_se_R1000.rds")  
+#5.3) Ahora hacer el calculo para los hombres
+
+#Función que encuentra el pico para los hombres: 
+calcular_edad_pico_hombres <- function(data, index){
+  
+  #i) Muestra boot: 
+  data_base <- data[index,]
+  
+  #ii)Usar la muestra boot para predecir los valores de ingreso
+  data_base$ln_sal_predicted <- predict(lm(ln_sal ~ female + nivel_educ + age + I(age^2) + sizeFirm + formal + oficio + estrato1 ,data = data_base, subset = index))
+  
+  #ii)Remover outliers de la base y hacer el promedio salarial por edad para las mujeres: 
+  low <- mean(data_base$ln_sal) - 2* sd(data_base$ln_sal)
+  up <- mean(data_base$ln_sal) + 2* sd(data_base$ln_sal)
+  
+  data_base <- data_base %>% 
+    filter(female == 0) %>% 
+    filter( low < ln_sal & ln_sal < up) %>% 
+    group_by(age) %>%
+    summarise(mean_salary_per_hour = mean(ln_sal_predicted), contador = n())
+  
+  data_base <- data_base %>%
+    filter(contador > 24)
+  
+  #iii)Encontrar el pico de edad: 
+  data_base <- data_base %>%
+    arrange(desc(mean_salary_per_hour))
+  
+  #iv)Pico 
+  pico <- as.numeric(data_base[1,1])
+  return(pico)
+}
+
+#Hacer bootstrapping para encontrar la incertidumbre del pico
+pico_hombres_bootstrap_se_R1000 <- boot(db, calcular_edad_pico_hombres, R = 1000)
 
 
 
