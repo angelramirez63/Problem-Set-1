@@ -200,7 +200,7 @@ stargazer(scores[, c("Modelo", "RMSE")], type = "latex", title = "Resultados de 
           summary = FALSE, digits = 4, out = "tabla_modelos.tex",
           omit.summary.stat = c("n"))
 
-#### gráfica de los errores
+#### gráfica de los errores de predicción por modelo
 
 RMSE_vsa   <-  c(score1a, score2a, score3a, score4a, score5a, score6a, 
                  score7a, score8a)
@@ -218,7 +218,7 @@ ggplot(scores, aes(x = Modelo, y = RMSE, col = Aproximación)) +
 
 #### Outliers de la muestra
 
-##### Distribución del modelo con mejor predicción
+##### Distribución de los errores del modelo con mejor predicción
 
 predictions <- predict(modelo6a, testing)
 
@@ -409,74 +409,66 @@ stargazer(scores, type = "latex", summary = FALSE, rownames = FALSE)
 
 #### Estadístico de influencia
 
-##### Modelo 6
+##### Modelo 1
 
-full_model6 <- lm(form_6,
+full_model1 <- lm(form_1,
                   data = db )
 
-X<- model.matrix(full_model6)
-
-vec6<- 1/(1-hatvalues(full_model6))
-
-N <- nrow(X)
-influencia <- numeric(N) 
-
-for (i in 1:N) {
-  influencia[i] <- vec6[i] * full_model6$residuals[i]
-}
-
-influencia6 <- mean(influencia)
-
-##### Modelo 7
-
-full_model7 <- lm(form_7,
-                  data = db )
-
-X<- model.matrix(full_model7)
-
-vec7<- 1/(1-hatvalues(full_model7))
-
-N <- nrow(X)
-influencia <- numeric(N) 
-
-for (i in 1:N) {
-  influencia[i] <- vec7[i] * full_model7$residuals[i]
-}
-
-influencia7 <- mean(influencia)
-
-##### Modelo 8
-
-full_model8 <- lm(form_8,
-                  data = db )
-
-X<- model.matrix(full_model8)
-
-vec8<- 1/(1-hatvalues(full_model8))
-
-N <- nrow(X)
-influencia <- numeric(N) 
-
-for (i in 1:N) {
-  influencia[i] <- vec8[i] * full_model8$residuals[i]
-}
-
-influencia8 <- mean(influencia)
+hatvalues1 <- hatvalues(full_model1)
+leverage1 <- mean(hatvalues1)
 
 ##### Modelo 2
 
 full_model2 <- lm(form_2,
                   data = db )
 
-X<- model.matrix(full_model2)
+hatvalues2 <- hatvalues(full_model2)
+leverage2 <- mean(hatvalues2)
 
-vec2<- 1/(1-hatvalues(full_model2))
+##### Modelo 3
 
-N <- nrow(X)
-influencia <- numeric(N) 
+full_model3 <- lm(form_3,
+                  data = db )
 
-for (i in 1:N) {
-  influencia[i] <- vec2[i] * full_model2$residuals[i]
-}
+hatvalues3 <- hatvalues(full_model3)
+leverage3 <- mean(hatvalues3)
 
-influencia2 <- mean(influencia)
+##### Modelo 4
+
+full_model4 <- lm(form_4,
+                  data = db )
+
+hatvalues4 <- hatvalues(full_model4)
+leverage4 <- mean(hatvalues4)
+
+##### Modelo 5
+
+full_model5 <- lm(form_5,
+                  data = db )
+
+hatvalues5 <- hatvalues(full_model5)
+leverage5 <- mean(hatvalues5)
+
+#### Modelo 6
+
+full_model6 <- lm(form_6,
+                  data = db )
+
+hatvalues6 <- hatvalues(full_model6)
+leverage6 <- mean(hatvalues6)
+
+##### Modelo 7
+
+full_model7 <- lm(form_7,
+                  data = db )
+
+hatvalues7 <- hatvalues(full_model7)
+leverage7 <- mean(hatvalues7)
+
+##### Modelo 8
+
+full_model8 <- lm(form_8,
+                  data = db )
+
+hatvalues8 <- hatvalues(full_model8)
+leverage8 <- mean(hatvalues8)
