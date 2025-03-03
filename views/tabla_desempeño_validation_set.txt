@@ -1,0 +1,19 @@
+\begin{table}[!htbp] \centering 
+  \caption{Desempeño predictivo} 
+  \label{} 
+\begin{tabular}{@{\extracolsep{5pt}} ccc} 
+\\[-1.8ex]\hline 
+\hline \\[-1.8ex] 
+Modelo & RMSE \\ 
+\hline \\[-1.8ex] 
+$1$ & $0.6731$ \\ 
+$2$ & $0.6880$ \\ 
+$3$ & $0.4344$ \\ 
+$4$ & $0.4051$ \\ 
+$5$ & $0.3962$ \\ 
+$6$ & $0.3664$ \\ 
+$7$ & $0.3932$ \\ 
+$8$ & $0.7783$ \\ 
+\hline \\[-1.8ex] 
+\end{tabular} 
+\end{table}
