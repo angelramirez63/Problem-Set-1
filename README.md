@@ -11,7 +11,7 @@
 - [Views](#Views)
 
 ## Documentación
-Texto de la introducción.
+Esta carpeta contiene el archivo final con la solución del taller en formato pdf y en formato Tex.
 
 ## Scripts
 La carpeta de scripts contiene la solución del taller diferenciado, organizada en un script por sección, junto con una carpeta adicional que incluye los scripts de prueba. A continuación, se detalla la estructura y contenido:
