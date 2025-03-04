@@ -25,8 +25,8 @@ db <- readRDS("stores/datos_modelos.rds") %>%
 ## Estadísticas descriptivas ---------------------------------------------------
 #Visualización: de las distribuciones de las variables de ingreso 
 db <- db %>% mutate(y_ingLab_m_k =y_ingLab_m/1000)
-variables <- c("y_ingLab_m_k", "y_ingLab_m_ha") 
-labels <- c("Salario mensual (miles)", "Salario por hora")
+variables <- c("y_ingLab_m_k", "y_ingLab_m_ha", "ln_sal") 
+labels <- c("Salario mensual (miles)", "Salario por hora", "Logarítmo natural del salario")
 
 # Iteramos con índice para asociar cada variable con su label correspondiente
 for (i in seq_along(variables)) {
@@ -37,7 +37,7 @@ for (i in seq_along(variables)) {
     geom_histogram(color = "#000000", fill = "cornflowerblue") +
     geom_vline(xintercept = median(db[[variable]], na.rm = TRUE), linetype = "dashed", color = "red") +
     geom_vline(xintercept = mean(db[[variable]], na.rm = TRUE), linetype = "dashed", color = "blue") +  
-    ggtitle(paste("Distribución:", label)) +
+    ggtitle(label) +
     xlab(label) + 
     ylab("Conteo") +
     theme_classic() +

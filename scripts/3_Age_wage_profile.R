@@ -100,13 +100,8 @@ mean_sal_age <- db %>%
 
 ggplot(mean_sal_age, aes(x = age, y = salario_promedio)) +
   geom_col(fill = "royalblue1", width = 0.7) +  
-  labs(
-    title = "Salario por hora promedio por edad y género",
-    x = "Edad",
-    y = "Salario por hora"
-  ) +
-  theme_classic() +  
-  theme(plot.title = element_text(size =16, hjust = 0.5, face = "bold")) +
+  labs(x = "Edad", y = "Salario por hora" ) +
+  theme_classic() + 
   facet_wrap(~ female, labeller = as_labeller(c(`0` = "Hombres", `1` = "Mujeres")))
 
 ggsave("views/salario_por_edad_genero.png", width = 10, height = 5, dpi = 300)
